@@ -15,4 +15,5 @@ htmlcov/
 reports/
 *.sqlite3
 *.db
+*.zip
 .DS_Store
