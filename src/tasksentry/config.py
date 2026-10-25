@@ -30,6 +30,7 @@ class TaskSentryConfig(BaseModel):
     tool_registry_path: str | None = None
     log_level: str = Field(default="INFO")
     otel_enabled: bool = Field(default=False)
+    ollama_base_url: str = Field(default="http://localhost:11434/v1")
 
 
 def _load_yaml_file(path: str) -> dict[str, Any]:
@@ -71,6 +72,7 @@ def load_config(
         "TASKSENTRY_TOOL_REGISTRY_PATH": "tool_registry_path",
         "TASKSENTRY_LOG_LEVEL": "log_level",
         "TASKSENTRY_OTEL_ENABLED": "otel_enabled",
+        "TASKSENTRY_OLLAMA_BASE_URL": "ollama_base_url",
     }
     for env_var, field_name in mapping.items():
         if env_var in os.environ:

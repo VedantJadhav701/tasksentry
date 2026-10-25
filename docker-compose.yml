@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY . /app
+        RUN pip install --no-cache-dir -e ".[dashboard,ollama]"
+        EXPOSE 8321
+        CMD ["tasksentry", "dashboard", "--host", "0.0.0.0", "--port", "8321"]
+    ports:
+      - "127.0.0.1:8321:8321"
+    environment:
+      - TASKSENTRY_DATABASE_PATH=/app/data/tasksentry.db
+      - TASKSENTRY_OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - tasksentry-data:/app/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  tasksentry-data:
+  ollama-models:

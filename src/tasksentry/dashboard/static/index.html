@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskSentry Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">
+      <span class="shield">🛡️</span>
+      <span class="brand">TaskSentry</span>
+      <span class="badge">Local Control Plane</span>
+    </div>
+    <nav class="nav-links">
+      <button class="nav-tab active" data-tab="tasks">Tasks</button>
+      <button class="nav-tab" data-tab="task-detail">Task Detail</button>
+      <button class="nav-tab" data-tab="benchmarks">Benchmarks</button>
+      <button class="nav-tab" data-tab="model-comparison">Model Comparison</button>
+      <button class="nav-tab" data-tab="case-ablations">CASE Ablations</button>
+      <button class="nav-tab" data-tab="ollama-health">Ollama Health</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- Tasks Tab -->
+    <section id="tab-tasks" class="tab-content active">
+      <div class="section-header">
+        <h2>Recorded Task Executions</h2>
+        <button id="refresh-tasks" class="btn">Refresh</button>
+      </div>
+      <div id="metrics-summary" class="metric-cards">
+        <div class="card"><div class="val" id="m-tasks">0</div><div class="lbl">Total Tasks</div></div>
+        <div class="card"><div class="val" id="m-success">0.0%</div><div class="lbl">Success Rate</div></div>
+        <div class="card"><div class="val" id="m-tokens">0</div><div class="lbl">Total Tokens</div></div>
+        <div class="card"><div class="val" id="m-cost">$0.00</div><div class="lbl">Total Cost</div></div>
+        <div class="card"><div class="val" id="m-dups">0</div><div class="lbl">Blocked Duplicates</div></div>
+      </div>
+      <table class="data-table" id="tasks-table">
+        <thead>
+          <tr>
+            <th>Task ID</th>
+            <th>Status</th>
+            <th>Success</th>
+            <th>Tokens</th>
+            <th>Cost</th>
+            <th>Tool Calls</th>
+            <th>Duration</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tasks-tbody">
+          <tr><td colspan="8">Loading tasks...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Task Detail Tab -->
+    <section id="tab-task-detail" class="tab-content">
+      <div class="section-header">
+        <h2>Task Details</h2>
+        <div class="detail-inputs">
+          <input type="text" id="detail-task-id" placeholder="Enter Task ID...">
+          <button id="btn-load-detail" class="btn">Load</button>
+          <button id="btn-stop-task" class="btn btn-danger">Stop Task</button>
+        </div>
+      </div>
+      <div id="task-detail-view" class="detail-container">
+        <p class="placeholder">Select or enter a Task ID above to view details.</p>
+      </div>
+    </section>
+
+    <!-- Benchmarks Tab -->
+    <section id="tab-benchmarks" class="tab-content">
+      <div class="section-header">
+        <h2>TaskSentryBench v0.1 Runs</h2>
+        <button id="refresh-benchmarks" class="btn">Refresh</button>
+      </div>
+      <div id="benchmark-runs-list">
+        <p>Loading benchmark runs...</p>
+      </div>
+    </section>
+
+    <!-- Model Comparison Tab -->
+    <section id="tab-model-comparison" class="tab-content">
+      <div class="section-header">
+        <h2>Local Model Comparison</h2>
+      </div>
+      <div id="model-comparison-view">
+        <p>Loading model comparison data from benchmark reports...</p>
+      </div>
+    </section>
+
+    <!-- CASE Ablations Tab -->
+    <section id="tab-case-ablations" class="tab-content">
+      <div class="section-header">
+        <h2>CASE Harness Ablation Analysis</h2>
+      </div>
+      <div id="case-ablations-view">
+        <p>Loading ablation results...</p>
+      </div>
+    </section>
+
+    <!-- Ollama Health Tab -->
+    <section id="tab-ollama-health" class="tab-content">
+      <div class="section-header">
+        <h2>Ollama Server & Model Health</h2>
+        <button id="check-ollama-btn" class="btn">Check Now</button>
+      </div>
+      <div id="ollama-status-card" class="card-detail">
+        <p>Click "Check Now" to probe local Ollama instance at http://localhost:11434.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

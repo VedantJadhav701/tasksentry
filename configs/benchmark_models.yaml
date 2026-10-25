@@ -1,0 +1,10 @@
+routine_models:
+  - llama3.2:1b
+  - gemma2:2b
+  - qwen2.5:3b
+
+reasoning_models:
+  - qwen3:4b-instruct-2507-q4_K_M
+
+optional_models:
+  - ornith:latest

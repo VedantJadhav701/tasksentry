@@ -4,13 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tasksentry"
-dynamic = ["version"]
+version = "0.1.0"
 description = "TaskSentry: a budget-native agent harness and control plane for task-level cost, latency, reliability, and safety control."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-authors = [{ name = "TaskSentry contributors" }]
-keywords = ["ai-agents", "llm", "budget", "reliability", "harness", "loop-detection"]
+authors = [{ name = "TaskSentry contributors", email = "maintainers@tasksentry.org" }]
+keywords = [
+    "ai-agents",
+    "llm",
+    "budget",
+    "reliability",
+    "harness",
+    "loop-detection",
+    "verification",
+    "agent-runtime",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -18,25 +27,51 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "pydantic>=2.5,<3",
 ]
 
 [project.optional-dependencies]
-dashboard = ["fastapi>=0.110", "uvicorn>=0.27"]
+dashboard = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+ollama = [
+    "httpx>=0.25",
+    "pyyaml>=6.0",
+]
+openai = [
+    "httpx>=0.25",
+]
+benchmark = [
+    "pyyaml>=6.0",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "ruff>=0.4",
     "mypy>=1.8",
+    "build>=1.0",
+    "twine>=4.0",
 ]
 
-[tool.setuptools.dynamic]
-version = { attr = "tasksentry.version.__version__" }
+[project.scripts]
+tasksentry = "tasksentry.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/VedantJadhav701/tasksentry"
+Repository = "https://github.com/VedantJadhav701/tasksentry.git"
+Issues = "https://github.com/VedantJadhav701/tasksentry/issues"
+Changelog = "https://github.com/VedantJadhav701/tasksentry/blob/master/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+tasksentry = ["py.typed", "dashboard/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

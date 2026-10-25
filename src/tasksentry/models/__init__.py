@@ -2,6 +2,7 @@
 
 from tasksentry.models.base import ModelClient, ModelResponse
 from tasksentry.models.fake_model import FakeModel
+from tasksentry.models.ollama import OllamaClient, check_ollama_health
 from tasksentry.models.openai_compat import OpenAICompatibleClient
 from tasksentry.models.registry import (
     AgentDefinition,
@@ -18,7 +19,9 @@ __all__ = [
     "ModelClient",
     "ModelRegistry",
     "ModelResponse",
+    "OllamaClient",
     "OpenAICompatibleClient",
     "PolicyDefinition",
     "ResolvedAgent",
+    "check_ollama_health",
 ]

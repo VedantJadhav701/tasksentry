@@ -43,11 +43,14 @@ def test_budget_wrapper_tool_call_recording() -> None:
 
 
 def test_budget_wrapper_hard_limit_raises_exceeded_error() -> None:
-    with pytest.raises(BudgetExceededError), budget(
-        task_id="limit-test",
-        max_tool_calls=2,
-        on_exceed="raise",
-    ) as ctx:
+    with (
+        pytest.raises(BudgetExceededError),
+        budget(
+            task_id="limit-test",
+            max_tool_calls=2,
+            on_exceed="raise",
+        ) as ctx,
+    ):
         ctx.record_tool_call(tool="call1")
         ctx.record_tool_call(tool="call2")
 

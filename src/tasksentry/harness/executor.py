@@ -74,6 +74,7 @@ class Executor:
         t_start = time.perf_counter()
 
         # Delegate execution to ToolGovernor
+        # (Executor scores step in tracker with full state hashes)
         gov_res = self.governor.execute(
             tool_name,
             arguments,
@@ -81,6 +82,7 @@ class Executor:
             state_hash_at_call=state_before_hash,
             exemptions=exemptions,
             approved_write=approved_write,
+            record_in_tracker=False,
         )
 
         duration_ms = (time.perf_counter() - t_start) * 1000.0
@@ -105,6 +107,13 @@ class Executor:
         new_state = canonical_state
         if status == "success":
             # Update world with any reported facts or artifacts
+            res_dict = gov_res.get("result")
+            if isinstance(res_dict, dict):
+                if "new_world" in res_dict and isinstance(res_dict["new_world"], dict):
+                    new_state = new_state.with_world(**res_dict["new_world"])
+                if "new_facts" in res_dict and isinstance(res_dict["new_facts"], dict):
+                    for k, v in res_dict["new_facts"].items():
+                        new_state = new_state.with_fact(k, v)
             if context and "new_facts" in context:
                 for k, v in context["new_facts"].items():
                     new_state = new_state.with_fact(k, v)

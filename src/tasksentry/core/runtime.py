@@ -5,6 +5,7 @@ from typing import Any
 from tasksentry.budget.budget import Budget
 from tasksentry.core.contract import TaskContract
 from tasksentry.core.events import (
+    BUDGET_EXCEEDED,
     CHECKPOINT,
     COMPRESS,
     LOOP_DETECTED,
@@ -151,6 +152,10 @@ class CASERuntime:
             if not verdict.allowed:
                 reason = verdict.rejection_reason or "Action rejected"
                 self.history.append({"role": "system", "content": f"Action rejected: {reason}"})
+                if "budget" in reason.lower():
+                    final_status = "stopped"
+                    self._emit(BUDGET_EXCEEDED, reason, {})
+                    break
                 dec = self.recovery_engine.evaluate_failure(
                     tool_name=action.get("tool", "unknown"),
                     error_type="action_disallowed",

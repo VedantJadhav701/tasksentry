@@ -69,9 +69,14 @@ class ActionGate:
 
         # 1. Completion claim evaluation
         if action_type in ("complete_task", "finish", "complete"):
+            eval_context = dict(context or {})
+            if "world" in eval_context and isinstance(eval_context["world"], dict):
+                for k, v in eval_context["world"].items():
+                    if k not in eval_context:
+                        eval_context[k] = v
             all_passed, results = self.verification_gate.all_required_passed(
                 self.contract.success_criteria,
-                context=context or {},
+                context=eval_context,
             )
             serial_results = [r.model_dump() for r in results]
 
@@ -154,6 +159,15 @@ class ActionGate:
             and not effective_exemptions.any
         ):
             # Blocked duplicate
+            self.governor.blocked_duplicates_count += 1
+            self.governor.tracker.register_blocked_duplicate()
+            from tasksentry.core.events import TOOL_BLOCKED_DUPLICATE
+
+            self._emit(
+                TOOL_BLOCKED_DUPLICATE,
+                f"Duplicate action fingerprint threshold exceeded for {tool_name}",
+                {"tool": tool_name, "fingerprint": fp, "count": fp_count},
+            )
             return GovernedActionVerdict(
                 allowed=False,
                 rejection_reason="Duplicate action fingerprint threshold exceeded",

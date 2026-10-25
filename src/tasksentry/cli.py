@@ -8,6 +8,7 @@ from typing import Any
 
 from tasksentry.config import load_config
 from tasksentry.core.task import AgentTask
+from tasksentry.models.ollama import check_ollama_health
 from tasksentry.storage.sqlite import SQLiteReceiptStore
 
 
@@ -146,6 +147,75 @@ def cmd_receipt(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    """Run TaskSentryBench offline or Ollama local suite."""
+    from tasksentry.benchmark.runner import run_benchmark_suite
+
+    out_file = args.output
+    if not out_file:
+        out_file = (
+            "reports/ollama-benchmark.json"
+            if "ollama" in args.suite
+            else "reports/offline-benchmark.json"
+        )
+
+    print(f"Executing TaskSentryBench: suite='{args.suite}', output='{out_file}'")
+    run_benchmark_suite(
+        suite_name=args.suite,
+        routine_model=args.routine_model,
+        reasoning_model=args.reasoning_model,
+        seed=args.seed,
+        output_path=out_file,
+    )
+    print(
+        f"Benchmark finished. Reports written to {out_file} and {out_file.replace('.json', '.md')}"
+    )
+    return 0
+
+
+def cmd_ollama_health(args: argparse.Namespace) -> int:
+    """Check availability and latency of local Ollama server and models."""
+    res = check_ollama_health(base_url=args.base_url, model=args.model)
+    print("\n=== Ollama Health Status ===")
+    print(f"Base URL:   {res['base_url']}")
+    print(f"Reachable:  {'Yes' if res['reachable'] else 'No'}")
+    print(f"Model:      {res['model']} ({'Available' if res['available'] else 'Not Found'})")
+    print(f"Latency:    {res['latency_ms']} ms")
+    print(f"Message:    {res['message']}")
+    if res["available_models"]:
+        print(f"Models:     {', '.join(res['available_models'])}")
+    return 0 if res["reachable"] else 1
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Start the local TaskSentry dashboard FastAPI application."""
+    from tasksentry.dashboard.app import run_dashboard
+
+    print(f"Starting TaskSentry dashboard on http://{args.host}:{args.port}")
+    run_dashboard(host=args.host, port=args.port)
+    return 0
+
+
+def cmd_benchmark_report(args: argparse.Namespace) -> int:
+    """Print or inspect a saved benchmark report."""
+    run_id = args.run
+    reports_dir = "reports"
+    candidates = [
+        os.path.join(reports_dir, f"{run_id}.md"),
+        os.path.join(reports_dir, f"{run_id}.json"),
+        os.path.join(reports_dir, run_id),
+    ]
+
+    for p in candidates:
+        if os.path.isfile(p):
+            with open(p, encoding="utf-8") as f:
+                print(f.read())
+            return 0
+
+    print(f"Report '{run_id}' not found in {reports_dir}/.", file=sys.stderr)
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tasksentry",
@@ -174,6 +244,36 @@ def build_parser() -> argparse.ArgumentParser:
     p_rec = subparsers.add_parser("receipt", help="Print task receipt")
     p_rec.add_argument("task_id", help="Task ID to retrieve receipt for")
 
+    # benchmark
+    p_bench = subparsers.add_parser("benchmark", help="Run TaskSentryBench evaluation suite")
+    p_bench.add_argument(
+        "--suite",
+        "-s",
+        default="offline-v0.1",
+        choices=["offline-v0.1", "ollama-v0.1", "v0.1"],
+        help="Benchmark suite",
+    )
+    p_bench.add_argument("--routine-model", default="llama3.2:1b", help="Routine lane model")
+    p_bench.add_argument(
+        "--reasoning-model", default="qwen3:4b-instruct-2507-q4_K_M", help="Reasoning lane model"
+    )
+    p_bench.add_argument("--seed", type=int, default=42, help="Random seed")
+    p_bench.add_argument("--output", "-o", default=None, help="Destination report path")
+
+    # ollama-health
+    p_ohealth = subparsers.add_parser("ollama-health", help="Check local Ollama server health")
+    p_ohealth.add_argument("--base-url", default="http://localhost:11434/v1", help="Ollama URL")
+    p_ohealth.add_argument("--model", default="llama3.2:1b", help="Model name to check")
+
+    # dashboard
+    p_dash = subparsers.add_parser("dashboard", help="Start local dashboard server")
+    p_dash.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
+    p_dash.add_argument("--port", type=int, default=8321, help="Bind port (default 8321)")
+
+    # benchmark-report
+    p_brep = subparsers.add_parser("benchmark-report", help="Inspect saved benchmark report")
+    p_brep.add_argument("--run", "-r", required=True, help="Benchmark run ID or filename")
+
     return parser
 
 
@@ -194,6 +294,10 @@ def main(argv: list[str] | None = None) -> int:
         "tasks": cmd_tasks,
         "task": cmd_task,
         "receipt": cmd_receipt,
+        "benchmark": cmd_benchmark,
+        "ollama-health": cmd_ollama_health,
+        "dashboard": cmd_dashboard,
+        "benchmark-report": cmd_benchmark_report,
     }
 
     handler = handler_map.get(args.command)

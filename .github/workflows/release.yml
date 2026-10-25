@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  verify-and-build:
+    name: Verify, Build and Draft Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,dashboard,ollama,openai,benchmark]"
+          pip install build twine
+
+      - name: Lint and Format Check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type Check
+        run: mypy src/tasksentry
+
+      - name: Run Test Suite
+        run: python -m pytest -q
+
+      - name: Run Benchmark Smoke Test
+        run: |
+          mkdir -p reports
+          python -m tasksentry.benchmark.runner --suite offline-v0.1 --output reports/release-benchmark.json
+
+      - name: Build Distribution Packages
+        run: python -m build
+
+      - name: Verify Distribution Packages
+        run: twine check dist/*
+
+      - name: Attach Artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/*
+            reports/release-benchmark.md
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+  publish-pypi:
+    name: Publish to PyPI (Manual Approval)
+    needs: verify-and-build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tasksentry
+    permissions:
+      id-token: write
+    steps:
+      - name: Note
+        run: |
+          echo "PyPI publishing requires manual deployment approval in GitHub Environments."
+          echo "To publish, maintainers review the GitHub Release artifacts and approve the 'pypi' environment."

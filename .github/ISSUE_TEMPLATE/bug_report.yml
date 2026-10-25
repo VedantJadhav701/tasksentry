@@ -1,0 +1,53 @@
+name: Bug Report
+description: File a bug report for TaskSentry
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: version
+    attributes:
+      label: TaskSentry Version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version & OS
+      placeholder: e.g. Python 3.11.8 on Linux / Windows
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Minimal code example or CLI commands to reproduce the issue.
+      placeholder: |
+        1. Run `...`
+        2. Execute `...`
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Traceback or Logs
+      description: Please copy and paste any relevant logs or traceback here.
+      render: shell

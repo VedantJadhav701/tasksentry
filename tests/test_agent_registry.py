@@ -66,9 +66,7 @@ def test_agent_registry_missing_agent() -> None:
 
 def test_agent_registry_missing_model() -> None:
     a_reg = AgentRegistry()
-    a_reg.register_agent(
-        AgentDefinition(name="bad-model-agent", model="unregistered-model")
-    )
+    a_reg.register_agent(AgentDefinition(name="bad-model-agent", model="unregistered-model"))
     with pytest.raises(ModelNotFoundError):
         a_reg.resolve("bad-model-agent")
 
@@ -102,9 +100,7 @@ def test_agent_registry_missing_tool() -> None:
 
 def test_agent_registry_policy_override() -> None:
     a_reg = AgentRegistry()
-    a_reg.register_policy(
-        PolicyDefinition(name="base-policy", max_llm_calls=10, max_tokens=1000)
-    )
+    a_reg.register_policy(PolicyDefinition(name="base-policy", max_llm_calls=10, max_tokens=1000))
     a_reg.register_agent(
         AgentDefinition(
             name="overridden-agent",

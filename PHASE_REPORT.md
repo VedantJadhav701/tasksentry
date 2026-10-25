@@ -1,164 +1,167 @@
-# Phase 4 Report
+# Phase 6 Report: Open-Source Release Readiness (v0.1.0)
 
 ## Status
 PASS
 
-## Implemented
-Every required module and feature for Phase 4 has been implemented cleanly, deterministically, and with 100% test coverage:
+## Release Readiness
 
-- `src/tasksentry/__init__.py`:
-  - Exposed complete public SDK interface: `AgentTask`, `Budget`, `BudgetPolicy`, `TaskReceipt`, `ToolGovernor`, `ToolRegistry`, `budget`, `tool`.
-  - Exposed storage and registry classes: `AgentRegistry`, `ModelRegistry`, `InMemoryReceiptStore`, `SQLiteReceiptStore`, `ReceiptStore`.
-- `src/tasksentry/config.py`:
-  - Implemented `TaskSentryConfig` with configuration precedence: explicit kwargs > `TASKSENTRY_*` environment variables > `tasksentry.yaml` / `tasksentry.yml` > default fallbacks.
-  - Never hardcodes or stores API keys.
-- `src/tasksentry/exceptions.py`:
-  - Added Phase 4 exceptions: `ModelError`, `ModelNotFoundError`, `StorageError`, `StorageTaskNotFoundError`, `AgentRegistryError`, `AgentNotFoundError`, `PolicyNotFoundError`.
-- `src/tasksentry/core/task.py`:
-  - Extended `AgentTask` to support high-level keyword configuration: `goal`, `max_llm_calls`, `max_tool_calls`, `max_tokens`, `max_cost_usd`, `max_wall_time_seconds`, `success_criteria`, `milestones`, `store`, and named agent string resolution via `AgentRegistry`.
-- `src/tasksentry/core/receipt.py`:
-  - Added `.receipt` convenience property on `TaskReceipt` returning self, enabling `print(result.receipt)` workflows.
-- `src/tasksentry/budget/budget.py`:
-  - Implemented `budget` context manager and `BudgetContext` powered by `contextvars.ContextVar`.
-  - Added methods: `record_usage`, `record_tool_call`, `check`, `remaining_budget`, `receipt`.
-  - Added enforcement modes: `raise` (`BudgetExceededError`), `summarize_and_stop`, user-provided `stop_callback`, and `both`.
-- `src/tasksentry/models/`:
-  - `base.py`: Defined `ModelResponse` data model and `ModelClient` protocol.
-  - `fake_model.py`: Deterministic offline `FakeModel` supporting queued canned responses and fallback message generation.
-  - `openai_compat.py`: `OpenAICompatibleClient` connecting to any OpenAI-compatible endpoint with tool schema conversion, token tracking, custom base URLs, and structured `ModelError` handling.
-  - `registry.py`: Implemented `ModelRegistry` (with custom Python callable models) and `AgentRegistry` loading declarative specifications from `agents/agents.yaml` and `agents/policies.yaml`.
-- `agents/` & `prompts/`:
-  - `agents/agents.yaml`: Declared `fake-coding-agent` mapping to `fake-model`, tools (`read_file`, `run_tests`, `search_workspace`), prompt file, and policy reference.
-  - `agents/policies.yaml`: Declared `coding-agent-default` execution policy.
-  - `prompts/coding_agent.md`: System prompt for the coding agent.
-- `src/tasksentry/integrations/`:
-  - `openai.py`: Implemented `tracked_client` returning an OpenAI-compatible client wrapper that automatically tracks token consumption, calculates costs using `DEFAULT_PRICING_TABLE`, and updates the active ambient `BudgetContext`.
-- `src/tasksentry/storage/`:
-  - `receipts.py`: Defined `ReceiptStore` protocol.
-  - `memory.py`: `InMemoryReceiptStore` for thread-safe in-memory caching and testing.
-  - `sqlite.py`: `SQLiteReceiptStore` local database with idempotent schema initialization, indexed lookups on `task_id` and `status`, transactions, and parameterized SQL queries preventing SQL injection.
-- `src/tasksentry/cli.py`:
-  - Standard library CLI supporting subcommands: `demo`, `run --task <path>`, `tasks`, `task <id>`, `receipt <id>`.
-  - `examples/coding_task.yaml`: Offline sample task contract.
-- Test suites:
-  - Added 42 new unit tests across 10 test modules (`test_public_api.py`, `test_agent_registry.py`, `test_budget_wrapper.py`, `test_openai_compat.py`, `test_openai_integration.py`, `test_storage_memory.py`, `test_storage_sqlite.py`, `test_receipt_store.py`, `test_config.py`, `test_cli.py`).
-  - Total tests passing: 212 tests.
+TaskSentry v0.1.0 is fully verified and prepared for public open-source release:
+- **Core Harness & Progress Math**: Completed and verified (Phases 1-3).
+- **Public SDK, Storage & CLI**: Completed and verified (Phase 4).
+- **TaskSentryBench v0.1 & Local Dashboard**: Completed and verified (Phase 5).
+- **Packaging, CI Workflows & Documentation**: Completed and verified (Phase 6).
+- **Quality Gates**: 247 tests passing, ruff clean, ruff format clean, mypy strict clean, package builds cleanly (`.tar.gz` and `.whl`).
 
-## Public API
-The public SDK surface is exported directly from the top-level `tasksentry` namespace:
+---
 
-```python
-from tasksentry import AgentTask, tool
+## Documentation
 
-@tool
-def read_file(path: str) -> str:
-    """Read a file."""
-    return ""
+The following documentation files have been written, validated, and linked:
+1. `README.md`: Project landing page with architecture diagram, core concepts, quickstart, SDK examples, CLI, benchmarks, limitations, and roadmap.
+2. `LICENSE`: Apache License 2.0.
+3. `NOTICE`: Copyright and community attribution notice.
+4. `CONTRIBUTING.md`: Development setup, architectural rules, code of conduct reference, and PR checklist.
+5. `CODE_OF_CONDUCT.md`: Contributor Covenant Code of Conduct.
+6. `SECURITY.md`: Vulnerability reporting process, sandbox trust boundaries, write approval rules, and local dashboard security.
+7. `CHANGELOG.md`: Detailed record of all features, enhancements, and security notices for v0.1.0.
+8. `RELEASE.md`: Step-by-step checklist and procedures for tagging GitHub releases and future PyPI publications.
+9. `docs/architecture.md`: Detailed system architecture, component responsibilities, and runtime loop data flow.
+10. `docs/mathematics.md`: Mathematical foundations: canonical state hashing, action fingerprints, Bayesian belief update, information gain, APG formula, WindowGain, EMA, stop policy, and benchmark metrics.
+11. `docs/quickstart.md`: Step-by-step installation, demo run, first task creation, and dashboard launch.
+12. `docs/benchmark.md`: TaskSentryBench v0.1 specification (offline regression track vs. local Ollama track, 26 tasks across 10 families, 6 systems compared, and metrics formulas).
+13. `docs/ollama.md`: Local Ollama setup, model pull guide (`llama3.2:1b`, `qwen3:4b-instruct-2507-q4_K_M`), health checks, and caveats.
+14. `docs/configuration.md`: Environment variables, YAML configuration, pricing tables, and policy configuration.
+15. `docs/cli.md`: Comprehensive CLI reference covering all 9 commands and exit codes.
+16. `docs/dashboard.md`: Local dashboard architecture, views, and REST API endpoints.
+17. `docs/security.md`: In-depth security analysis of sandbox isolation, tool risk allowlists, and write approvals.
+18. `docs/roadmap.md`: Near-term (v0.2.0 - v0.3.0) and long-term (v0.4.0+) feature roadmap.
+19. `docs/release.md`: Release engineering guide for v0.1.0.
+20. `examples/`:
+    - `examples/wrap_existing_agent.py`: Ambient budget tracking wrapper demo.
+    - `examples/coding_agent_demo.py`: Autonomous coding repair task demo.
+    - `examples/research_agent_demo.py`: Research task with milestone verifications.
+    - `examples/dashboard_demo.py`: Programmatic dashboard API verification.
+    - `examples/ollama_benchmark_demo.py`: Local Ollama health and benchmark execution demo.
 
-@tool
-def run_tests() -> dict:
-    """Run tests."""
-    return {"exit_code": 0}
+---
 
-task = AgentTask(
-    goal="Find duplicated pricing logic and make the tests pass.",
-    max_llm_calls=12,
-    max_tool_calls=15,
-    max_tokens=60_000,
-    max_cost_usd=0.50,
-    max_wall_time_seconds=300,
-    success_criteria=[
-        {
-            "id": "tests_pass",
-            "verifier": "pytest",
-            "config": {"command": "pytest -q"},
-        }
-    ],
-    milestones=[
-        {
-            "id": "identify_duplicated_logic",
-            "done_when": {
-                "verifier": "artifact_exists",
-                "config": {"artifact": "analysis/duplicate_report.json"}
-            }
-        }
-    ],
-)
+## Packaging
 
-result = task.run(agent="fake-coding-agent")
-print(result.receipt)
+Editable installation with optional extras:
+```bash
+pip install -e ".[dev,dashboard,ollama]"
 ```
 
-## Agent registry
-The agent resolution workflow follows a declarative pipeline:
-1. When `task.run(agent="fake-coding-agent")` is called, the runner checks `AgentRegistry`.
-2. Agent specifications are read from `agents/agents.yaml` and policy definitions from `agents/policies.yaml`.
-3. The registry checks:
-   - That the agent identifier exists (raising `AgentNotFoundError` if missing).
-   - That the associated model is registered in `ModelRegistry` (raising `ModelNotFoundError` if missing).
-   - That the configured policy exists (raising `PolicyNotFoundError` if missing).
-   - That all tools specified in the agent's tool list are available in `ToolRegistry` (raising `ToolError` if missing).
-   - That the system prompt file exists and is readable (raising `AgentRegistryError` if missing).
-4. Policy overrides are merged on top of base policies.
-5. The agent is instantiated with resolved model, tools, prompt, and policy.
-
-## Budget wrapper
-The standalone budget context manager leverages Python's `contextvars.ContextVar`:
-- `_current_budget_context: contextvars.ContextVar[BudgetContext | None]` stores the ambient budget context.
-- Ambient contexts are isolated per execution context / thread / coroutine with zero process-global state leakage.
-- Nested `with budget(...)` blocks correctly save and restore outer contexts via context tokens.
-- Works independently of whether the user agent utilizes the full TaskSentry harness.
-
-Enforcement modes supported:
-1. `on_exceed="raise"`: Immediately raises `BudgetExceededError` when hard limits are crossed.
-2. `on_exceed="summarize_and_stop"`: Marks the context as stopped (`ctx.stopped = True`), halts subsequent actions, and generates a partial `TaskReceipt` without raising an exception.
-3. `stop_callback`: User-defined callable invoked upon limit violation.
-4. `on_exceed="both"`: Calls the stop callback / records stoppage, and raises `BudgetExceededError`.
-
-## Storage
-Task receipts and execution contracts are managed via the `ReceiptStore` protocol:
-- **`InMemoryReceiptStore`**: Fast, thread-safe in-memory store suitable for testing and ephemeral workflows.
-- **`SQLiteReceiptStore`**: Local, self-contained file database using SQLite:
-  - Idempotent table and index creation (`CREATE TABLE IF NOT EXISTS`).
-  - Indexes on `task_id` and `status` for fast query performance.
-  - Parameterized queries to eliminate SQL injection vulnerabilities.
-  - ACID transactional integrity via Python `sqlite3` context management.
-  - Stores receipt data, contract definitions, metadata, and timestamps (`created_at`, `updated_at`).
-
-## CLI
-The `tasksentry` CLI is implemented with standard library `argparse`:
-- `python -m tasksentry.cli --help`: Displays help and subcommand information.
-- `python -m tasksentry.cli demo`: Executes a fully offline autonomous agent task under budget control, outputs receipt metrics, and saves the record to SQLite.
-- `python -m tasksentry.cli run --task <path>`: Parses a YAML task contract, executes it with the requested agent, and prints JSON receipt.
-- `python -m tasksentry.cli tasks`: Lists recorded tasks from the SQLite database.
-- `python -m tasksentry.cli task <task_id>`: Prints full record details for a specific task.
-- `python -m tasksentry.cli receipt <task_id>`: Dumps the JSON receipt for a specific task.
-
-## Test results
-Actual output of running `conda run -n thermo_agent pytest -q`:
+Package build output (`python -m build`):
 ```
-........................................................................ [ 33%]
-........................................................................ [ 67%]
-....................................................................     [100%]
-212 passed in 8.25s
+Successfully built tasksentry-0.1.0.tar.gz and tasksentry-0.1.0-py3-none-any.whl
 ```
 
-## Lint and type results
-Actual output of running `conda run -n thermo_agent ruff check .`:
+Package metadata details:
+- Name: `tasksentry`
+- Version: `0.1.0`
+- License: `Apache-2.0`
+- Python: `>=3.11`
+- Includes typed marker: `src/tasksentry/py.typed`
+- Extras: `dev`, `dashboard`, `ollama`, `openai`, `benchmark`
+- CLI Entrypoint: `tasksentry = tasksentry.cli:main`
+
+---
+
+## Continuous Integration & Release Workflows
+
+1. **`.github/workflows/ci.yml`**:
+   - Matrix testing across Python 3.11 and Python 3.12.
+   - Linting with `ruff check .` and formatting check with `ruff format --check .`.
+   - Strict static type analysis with `mypy src/tasksentry`.
+   - Full unit and integration test suite with `pytest -q --cov`.
+   - Package build verification with `python -m build` and `twine check dist/*`.
+   - Offline benchmark smoke test: `python -m tasksentry.benchmark.runner --suite offline-v0.1 --output reports/ci-benchmark.json`.
+   - Runs zero cloud API calls and requires zero external API keys in CI.
+
+2. **`.github/workflows/release.yml`**:
+   - Triggers exclusively on `v*.*.*` tags.
+   - Verifies tests, linters, type checks, and package builds.
+   - Attaches `.tar.gz`, `.whl`, and Markdown benchmark reports directly to the GitHub Release.
+   - Requires manual environment approval for future PyPI publishing.
+
+---
+
+## Security Model & Limitations
+
+1. **In-Process Mode**: Designed for local development and unit tests. Does not isolate memory or host OS permissions.
+2. **Process-Isolated Mode**: Executes tools in isolated sub-processes with wall-clock timeout enforcement. Protects against interpreter crashes and hangs, but is not an OS container or security sandbox.
+3. **Tool Approvals**: Tasks can mandate human authorization callbacks for `write` and `destructive` tools via `require_approval_for_writes`.
+4. **Local Dashboard**: Strictly binds to `127.0.0.1:8321` by default with zero external telemetry. Not intended for direct internet exposure without an authenticating reverse proxy.
+
+---
+
+## Test Results
+
+Actual output of `python -m pytest -q`:
+```
+........................................................................ [ 29%]
+........................................................................ [ 58%]
+........................................................................ [ 87%]
+...............................                                          [100%]
+247 passed in 11.53s
+```
+
+---
+
+## Lint and Type Check Results
+
+Actual output of `ruff check .`:
 ```
 All checks passed!
 ```
 
-Actual output of running `conda run -n thermo_agent mypy src/tasksentry`:
+Actual output of `ruff format --check .`:
 ```
-Success: no issues found in 46 source files
+126 files already formatted
 ```
 
-## Known limitations
-- **OpenAI integration is optional**: The `tracked_client` wrapper is built to interface with OpenAI-compatible HTTP endpoints (such as vLLM, Ollama, or OpenAI) without requiring the external `openai` pip package. For native OpenAI client features (like function streaming), users can pass custom transports.
-- **SQLite is local-only**: SQLite provides local single-host storage. Distributed or multi-node production deployments will require a dedicated database backend.
-- **CLI is minimal**: The CLI focuses on core offline execution, contract running, and receipt inspection. It intentionally avoids heavy GUI/TUI framework dependencies.
-- **No hosted dashboard yet**: Telemetry is currently inspected through the CLI and SQLite records. Phase 5 introduces the dashboard and benchmarking framework.
+Actual output of `mypy src/tasksentry`:
+```
+Success: no issues found in 59 source files
+```
 
-## Next phase
-Phase 5: benchmark, reporting, and dashboard.
+---
+
+## Benchmark Smoke Test
+
+Command:
+```bash
+python -m tasksentry.benchmark.runner --suite offline-v0.1 --output reports/release-smoke.json
+```
+
+Output:
+```
+Starting TaskSentryBench v0.1: suite='offline-v0.1', seed=42
+Benchmark completed successfully at 2026-10-25T19:11:41.239613+00:00
+JSON report: reports/release-smoke.json
+Markdown report: reports/release-smoke.md
+```
+
+Aggregate Results:
+- `tasksentry_case`: 100.0% success rate, 143.1 tokens/success, 1.2 tool calls/task, 0.010s p95 latency, 100.0% budget compliance.
+- 26 tasks verified across all 10 failure-mode families.
+
+---
+
+## Known Limitations
+
+1. **Offline Benchmark**: The offline regression suite (`offline-v0.1`) tests mathematical invariants and loop controller mechanics with deterministic scripted agents; it does not measure open-ended general intelligence on unconstrained prompts.
+2. **Local Ollama Track**: Benchmark latency and throughput depend on host GPU VRAM and local quantization formats.
+3. **Local-Only Dashboard**: The dashboard is a developer inspection tool binding to loopback; multi-tenant access and hosted deployments require external reverse proxies.
+4. **PyPI Publishing**: Release workflow builds distribution packages and attaches them to GitHub releases; PyPI uploading requires manual maintainer approval.
+
+---
+
+## Next Steps After v0.1.0
+
+1. **Real-Model Benchmark Publication**: Community benchmark matrix tracking open-weights models (`qwen2.5`, `llama3.2`, `gemma2`) across GPU hardware.
+2. **Framework Adapters**: First-class drop-in middleware for LangGraph StateGraphs, CrewAI agents, and AutoGen teams.
+3. **Containerized Sandboxing**: Docker and Podman execution drivers for untrusted code execution.
+4. **Policy Learning**: Empirical APG weight tuning based on task category.
+5. **Advanced Context Compaction**: Checkpointed state compaction and rollback capabilities.

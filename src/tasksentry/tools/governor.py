@@ -76,6 +76,7 @@ class ToolGovernor:
         exemptions: RetryExemptions | None = None,
         approved_write: bool = False,
         timeout_seconds: float | None = None,
+        record_in_tracker: bool = True,
     ) -> dict[str, Any]:
         """Govern and conditionally execute a tool.
 
@@ -230,13 +231,16 @@ class ToolGovernor:
         )
 
         # Handle outcome and record in tracker
+        res_dump = sandbox_result.model_dump()
+        res_dump["fingerprint"] = fp
+
         if sandbox_result.timed_out:
             self._emit(
                 TOOL_TIMEOUT,
                 f"Tool {tool_name} timed out after {effective_timeout}s",
                 {"tool": tool_name, "timeout": effective_timeout},
             )
-            return sandbox_result.model_dump()
+            return res_dump
 
         if sandbox_result.status == "error":
             self._emit(
@@ -245,19 +249,20 @@ class ToolGovernor:
                 {"tool": tool_name, "error": sandbox_result.error},
             )
             # Record failed step in tracker so future attempts know the history
-            self.tracker.score_step(
-                tool_name=tool_name,
-                arguments=valid_args,
-                output=str(sandbox_result.error),
-                fingerprint=fp,
-                state_hash_before=s_hash,
-                state_hash_after=s_hash,
-                milestones_before=0,
-                milestones_after=0,
-                exemptions=effective_exemptions,
-                is_error=True,
-            )
-            return sandbox_result.model_dump()
+            if record_in_tracker:
+                self.tracker.score_step(
+                    tool_name=tool_name,
+                    arguments=valid_args,
+                    output=str(sandbox_result.error),
+                    fingerprint=fp,
+                    state_hash_before=s_hash,
+                    state_hash_after=s_hash,
+                    milestones_before=0,
+                    milestones_after=0,
+                    exemptions=effective_exemptions,
+                    is_error=True,
+                )
+            return res_dump
 
         # Success
         self._emit(
@@ -265,16 +270,17 @@ class ToolGovernor:
             f"Tool {tool_name} succeeded",
             {"tool": tool_name, "duration_ms": sandbox_result.duration_ms},
         )
-        self.tracker.score_step(
-            tool_name=tool_name,
-            arguments=valid_args,
-            output=str(sandbox_result.result),
-            fingerprint=fp,
-            state_hash_before=s_hash,
-            state_hash_after=s_hash,
-            milestones_before=0,
-            milestones_after=0,
-            exemptions=effective_exemptions,
-            is_error=False,
-        )
-        return sandbox_result.model_dump()
+        if record_in_tracker:
+            self.tracker.score_step(
+                tool_name=tool_name,
+                arguments=valid_args,
+                output=str(sandbox_result.result),
+                fingerprint=fp,
+                state_hash_before=s_hash,
+                state_hash_after=s_hash,
+                milestones_before=0,
+                milestones_after=0,
+                exemptions=effective_exemptions,
+                is_error=False,
+            )
+        return res_dump

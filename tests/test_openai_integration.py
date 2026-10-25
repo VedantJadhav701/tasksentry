@@ -35,9 +35,7 @@ def test_tracked_client_with_ambient_budget() -> None:
     )
 
     with budget(task_id="tracked-run", max_tokens=10_000, max_cost_usd=1.0) as ctx:
-        resp = client.chat.completions.create(
-            messages=[{"role": "user", "content": "Hello"}]
-        )
+        resp = client.chat.completions.create(messages=[{"role": "user", "content": "Hello"}])
 
         assert resp.content == "Hello from mock endpoint!"
         assert resp.usage.prompt_tokens == 100
@@ -68,8 +66,6 @@ def test_tracked_client_standalone() -> None:
 
     client = tracked_client(transport=mock_transport)
     # Works normally when no budget context is entered
-    resp = client.chat.completions.create(
-        messages=[{"role": "user", "content": "Hi"}]
-    )
+    resp = client.chat.completions.create(messages=[{"role": "user", "content": "Hi"}])
     assert resp.content == "Standalone response"
     assert resp.usage.total_tokens == 30
