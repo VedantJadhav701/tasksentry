@@ -73,3 +73,8 @@ class TaskReceipt(BaseModel):
             elif "final_status" in data and "status" not in data:
                 data["status"] = data["final_status"]
         return data
+
+    @property
+    def receipt(self) -> "TaskReceipt":
+        """Convenience property allowing result.receipt access on task run output."""
+        return self

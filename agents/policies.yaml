@@ -1,0 +1,12 @@
+policies:
+  coding-agent-default:
+    max_llm_calls: 12
+    max_tool_calls: 15
+    max_tokens: 60000
+    max_cost_usd: 0.50
+    max_wall_time_seconds: 300
+    risk_policy:
+      allow_read: true
+      allow_reversible_write: true
+      allow_destructive: false
+      require_approval_for_write: false

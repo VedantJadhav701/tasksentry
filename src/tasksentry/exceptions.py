@@ -65,3 +65,31 @@ class IsolationError(ToolError):
 
 class GovernorError(ToolError):
     """Raised when a tool action is rejected or blocked by the governor."""
+
+
+class ModelError(TaskSentryError):
+    """Base class for model invocation and client errors."""
+
+
+class ModelNotFoundError(ModelError):
+    """Raised when a requested model is not found in the model registry."""
+
+
+class StorageError(TaskSentryError):
+    """Base class for storage and receipt persistence errors."""
+
+
+class StorageTaskNotFoundError(StorageError):
+    """Raised when a task or receipt is not found in storage."""
+
+
+class AgentRegistryError(TaskSentryError):
+    """Base class for agent definition and resolution errors."""
+
+
+class AgentNotFoundError(AgentRegistryError):
+    """Raised when an agent definition is not found in the agent registry."""
+
+
+class PolicyNotFoundError(AgentRegistryError):
+    """Raised when an execution policy is not found."""

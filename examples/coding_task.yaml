@@ -1,0 +1,20 @@
+goal: "Find duplicated pricing logic and make tests pass"
+budget:
+  max_llm_calls: 10
+  max_tool_calls: 15
+  max_tokens: 50000
+  max_cost_usd: 0.50
+  max_wall_time_seconds: 120
+success_criteria:
+  - id: "tests_pass"
+    verifier: "numeric_range"
+    config:
+      value: 1
+      min: 1
+milestones:
+  - id: "identify_duplicated_logic"
+    done_when:
+      verifier: "numeric_range"
+      config:
+        value: 1
+        min: 1

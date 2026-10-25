@@ -1,0 +1,9 @@
+agents:
+  fake-coding-agent:
+    model: fake-model
+    tools:
+      - read_file
+      - run_tests
+      - search_workspace
+    system_prompt_file: prompts/coding_agent.md
+    policy: coding-agent-default

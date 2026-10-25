@@ -1,8 +1,15 @@
 """Task budget tracking, limit enforcement, and warning events."""
 
+from __future__ import annotations
+
+import contextvars
 import time
 from collections.abc import Callable
-from typing import Any
+from types import TracebackType
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from tasksentry.core.receipt import TaskReceipt
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
@@ -57,7 +64,7 @@ class Budget(BaseModel):
     _warned_dimensions: set[str] = PrivateAttr(default_factory=set)
 
     @model_validator(mode="after")
-    def _init_timing(self) -> "Budget":
+    def _init_timing(self) -> Budget:
         if self.started_at is None:
             self.started_at = time.time()
         if self.expires_at is None and self.max_wall_time_seconds is not None:
@@ -295,3 +302,228 @@ class Budget(BaseModel):
             self.retries += max(0, count)
 
         self._check_warnings_and_limits()
+
+
+_current_budget_context: contextvars.ContextVar[BudgetContext | None] = contextvars.ContextVar(
+    "current_budget_context", default=None
+)
+
+
+def get_current_budget() -> BudgetContext | None:
+    """Return the active ambient BudgetContext for the current task/thread/coroutine."""
+    return _current_budget_context.get()
+
+
+class BudgetContext:
+    """Active execution budget context managing usage, checks, and stop callbacks."""
+
+    def __init__(
+        self,
+        task_id: str,
+        budget: Budget,
+        on_exceed: str | Callable[[BudgetContext], None] = "raise",
+        stop_callback: Callable[[BudgetContext], None] | None = None,
+    ) -> None:
+        self.task_id = task_id
+        self.budget = budget
+        self.on_exceed = on_exceed
+        self.stop_callback = stop_callback
+        self.stopped = False
+        self._tool_calls: list[dict[str, Any]] = []
+
+    def record_usage(
+        self,
+        *,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cost_usd: float | None = None,
+        model: str | None = None,
+        llm_calls: int = 1,
+    ) -> None:
+        """Record model token usage and calculate cost if model is provided."""
+        from tasksentry.budget.pricing import calculate_cost
+
+        calc_cost = 0.0
+        if cost_usd is not None:
+            calc_cost = float(cost_usd)
+        elif model:
+            try:
+                estimate = calculate_cost(
+                    model=model, input_tokens=input_tokens, output_tokens=output_tokens
+                )
+                calc_cost = estimate.total_cost
+            except Exception:
+                calc_cost = 0.0
+
+        try:
+            self.budget.record_usage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_usd=calc_cost,
+                llm_calls=llm_calls,
+            )
+        except BudgetExceededError:
+            self.stopped = True
+            if self.on_exceed == "summarize_and_stop":
+                if callable(self.stop_callback):
+                    self.stop_callback(self)
+                return
+            raise
+
+        self.check()
+
+    def record_tool_call(
+        self,
+        tool: str,
+        *,
+        cost_usd: float = 0.0,
+        latency_ms: float = 0.0,
+        status: str = "success",
+    ) -> None:
+        """Record a tool invocation and update cost and call counters."""
+        self._tool_calls.append(
+            {
+                "tool": tool,
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+                "status": status,
+            }
+        )
+        try:
+            self.budget.record_tool_call(count=1)
+            if cost_usd > 0.0:
+                self.budget.cost_usd += cost_usd
+        except BudgetExceededError:
+            self.stopped = True
+            if self.on_exceed == "summarize_and_stop":
+                if callable(self.stop_callback):
+                    self.stop_callback(self)
+                return
+            raise
+
+        self.check()
+
+    def check(self) -> None:
+        """Evaluate whether budget limits have been reached and apply configured policy."""
+        # Check if any hard limit is exceeded
+        exceeded = False
+        reasons: list[str] = []
+
+        summary = self.budget.usage_summary()
+        if (
+            self.budget.max_llm_calls is not None
+            and summary["llm_calls"] >= self.budget.max_llm_calls
+        ):
+            exceeded = True
+            reasons.append(f"llm_calls ({summary['llm_calls']} >= {self.budget.max_llm_calls})")
+        if (
+            self.budget.max_tool_calls is not None
+            and summary["tool_calls"] >= self.budget.max_tool_calls
+        ):
+            exceeded = True
+            reasons.append(f"tool_calls ({summary['tool_calls']} >= {self.budget.max_tool_calls})")
+        if self.budget.max_tokens is not None and summary["total_tokens"] >= self.budget.max_tokens:
+            exceeded = True
+            reasons.append(f"tokens ({summary['total_tokens']} >= {self.budget.max_tokens})")
+        if self.budget.max_cost_usd is not None and summary["cost_usd"] >= self.budget.max_cost_usd:
+            exceeded = True
+            reasons.append(f"cost_usd ({summary['cost_usd']} >= {self.budget.max_cost_usd})")
+        if (
+            self.budget.max_wall_time_seconds is not None
+            and summary["wall_time_seconds"] >= self.budget.max_wall_time_seconds
+        ):
+            exceeded = True
+            reasons.append(
+                f"wall_time ({summary['wall_time_seconds']} >= {self.budget.max_wall_time_seconds})"
+            )
+
+        if not exceeded:
+            return
+
+        self.stopped = True
+        msg = f"Budget limits exceeded for task '{self.task_id}': {', '.join(reasons)}"
+
+        # 1. Execute stop callback if provided
+        if callable(self.stop_callback):
+            self.stop_callback(self)
+        if callable(self.on_exceed):
+            self.on_exceed(self)
+
+        # 2. Check raise conditions
+        should_raise = self.on_exceed in ("raise", "both")
+        if should_raise:
+            raise BudgetExceededError(msg)
+
+    def remaining_budget(self) -> dict[str, Any]:
+        """Return remaining resources across all limits."""
+        return self.budget.remaining_budget()
+
+    def receipt(self) -> TaskReceipt:
+        """Construct a final TaskReceipt from the active budget run."""
+        from tasksentry.core.receipt import TaskReceipt
+
+        status = "stopped" if self.stopped else "completed"
+        return TaskReceipt(
+            task_id=self.task_id,
+            status=status,
+            final_status=status,
+            success=not self.stopped,
+            tokens=self.budget.total_tokens,
+            cost_usd=self.budget.cost_usd,
+            llm_calls=self.budget.llm_calls,
+            tool_calls=self.budget.tool_calls,
+            retries=self.budget.retries,
+            wall_time_seconds=self.budget.wall_time_seconds,
+            budget_usage=self.budget.usage_summary(),
+            events=[e.model_dump() for e in self.budget.events],
+        )
+
+
+class budget:
+    """Context manager binding an ambient BudgetContext to the current execution thread/task."""
+
+    def __init__(
+        self,
+        task_id: str = "default-task",
+        *,
+        max_cost_usd: float | None = None,
+        max_tokens: int | None = None,
+        max_tool_calls: int | None = None,
+        max_llm_calls: int | None = None,
+        max_wall_time_seconds: float | None = None,
+        on_exceed: str | Callable[[BudgetContext], None] = "raise",
+        stop_callback: Callable[[BudgetContext], None] | None = None,
+        policy: BudgetPolicy | None = None,
+    ) -> None:
+        effective_policy = policy or BudgetPolicy(
+            hard_limits=(on_exceed not in ("summarize_and_stop",))
+        )
+        b = Budget(
+            max_cost_usd=max_cost_usd,
+            max_tokens=max_tokens,
+            max_tool_calls=max_tool_calls,
+            max_llm_calls=max_llm_calls,
+            max_wall_time_seconds=max_wall_time_seconds,
+            policy=effective_policy,
+        )
+        self.ctx = BudgetContext(
+            task_id=task_id,
+            budget=b,
+            on_exceed=on_exceed,
+            stop_callback=stop_callback,
+        )
+        self._token: contextvars.Token[BudgetContext | None] | None = None
+
+    def __enter__(self) -> BudgetContext:
+        self._token = _current_budget_context.set(self.ctx)
+        return self.ctx
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if self._token is not None:
+            _current_budget_context.reset(self._token)
+            self._token = None

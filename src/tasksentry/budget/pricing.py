@@ -50,6 +50,11 @@ class CostEstimate(BaseModel):
     total_cost: float = Field(ge=0.0)
     currency: str = "USD"
 
+    @property
+    def cost_usd(self) -> float:
+        """Alias for total_cost when currency is USD."""
+        return self.total_cost
+
 
 class PricingTable:
     """Configurable table mapping model identifiers to pricing rules.

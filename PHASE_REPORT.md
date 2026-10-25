@@ -1,142 +1,146 @@
-# Phase 3 Report
+# Phase 4 Report
 
 ## Status
 PASS
 
 ## Implemented
-Every required module and feature for Phase 3 has been implemented cleanly, robustly, and deterministically:
+Every required module and feature for Phase 4 has been implemented cleanly, deterministically, and with 100% test coverage:
 
-- `src/tasksentry/core/events.py`:
-  - Extended `EventType` with Phase 3 lifecycle and control events: `REPLAN`, `COMPRESS`, `CHECKPOINT`, `ESCALATE`, `STOP`, `LOOP_DETECTED`, `DUPLICATE_BLOCKED`, `VERIFICATION_FAILED`, `VERIFICATION_PASSED`.
-  - Added factory methods on `Event` for structured telemetry emission.
-- `src/tasksentry/core/receipt.py`:
-  - Extended `TaskReceipt` capturing end-to-end task accounting: `status`, `success`, `tokens`, `cost_usd`, `llm_calls`, `loop_warnings`, `verification_results`, `waste_report`, `final_answer`, `slo_met`, alongside Phase 2 budget and governor metrics.
-- `src/tasksentry/harness/verification.py`:
-  - `VerificationResult` and `VerificationGate` evaluating deterministic verifiers for success criteria and milestones.
-  - Implemented all 9 required deterministic verifiers:
-    1. `command_exit_code`: subprocess execution with timeout and return code assertion.
-    2. `pytest`: subprocess isolated pytest runner checking exit code 0.
-    3. `json_schema`: JSON structure and required keys validation on file or inline data.
-    4. `file_exists`: checks target file existence.
-    5. `git_diff_nonempty`: checks whether git working directory has unstaged or staged diffs.
-    6. `regex_match`: pattern matching against file content or inline string.
-    7. `numeric_range`: verifies numerical boundaries (`min`, `max`, `target`, `tolerance`).
-    8. `python_assert`: subprocess-isolated Python script execution with timeout; never executes user modules in harness process.
-    9. `artifact_exists`: checks presence of generated artifacts.
-  - Strict completion rule: models cannot mark completion by themselves; all success criteria must pass via verification.
-- `src/tasksentry/harness/stop_conditions.py`:
-  - `evaluate_stop_conditions(...)` orchestrating canonical loop thresholds with runtime bounds:
-    - Verifies success criteria completion.
-    - Evaluates budget exhaustion (hard limit).
-    - Checks 3-blocked-duplicate escalation.
-    - Detects unsafe writes requiring human intervention.
-    - Integrates Phase 1 canonical stop policy (`STOP_NOW`, `WARN`, `CONTINUE`) based on `WindowGain`, `EMA`, `HBT`, and repeating action fingerprints.
-- `src/tasksentry/harness/recovery.py`:
-  - `RecoveryAction` enum: `RETRY`, `REPLAN`, `COMPRESS`, `CHECKPOINT`, `ESCALATE`, `STOP`, `WARN_BUDGET`, `PROMPT_APPROVAL`, `REJECT_COMPLETION`.
-  - `RecoveryDecision` container.
-  - `compute_backoff(...)` calculating exponential backoff with random jitter.
-  - `compact_context(...)` compressing observation history while strictly preserving task goal, milestones, canonical facts, and active plan.
-  - `RecoveryEngine` implementing the recovery policy matrix:
-    - Transient tool error -> Retry with exponential backoff and jitter.
-    - Malformed tool arguments -> Return corrective schema error.
-    - Same tool fails 3 times -> Force replan.
-    - No progress for 3 consecutive steps -> Force replan.
-    - Context near limit -> Context compression and checkpointing.
-    - Budget 80% consumed -> Budget warning.
-    - Budget exhausted -> Stop with partial receipt.
-    - Unsafe write -> Pause for approval.
-    - Verification failed after completion claim -> Reject completion and continue or escalate.
-    - 3 blocked duplicates -> Escalate.
-- `src/tasksentry/harness/planner.py`:
-  - `Plan` data structure tracking goal, milestones, active milestone, completed milestones, and next action.
-  - `Planner` scheduling milestones and computing milestone progress.
-  - Milestone progress rule: milestones become complete only when their configured verifier passes.
-  - Dynamic replan rule: replanning preserves already completed milestones and strictly forbids deleting contract success criteria.
-- `src/tasksentry/harness/action_gate.py`:
-  - `ActionGate` regulating actions before execution:
-    - Handles `complete_task` claims by invoking `VerificationGate` across all contract success criteria. If any criterion fails, completion is rejected and `VERIFICATION_FAILED` is recorded.
-    - Passes tool invocations through `ToolGovernor` for schema validation, risk classification, write safety, and duplicate action fingerprinting.
-- `src/tasksentry/harness/executor.py`:
-  - `StepResult` capturing status (`success`, `error`, `timeout`, `blocked`), observation, APG score, state hashes, cost, tokens, and latency.
-  - `Executor` orchestrating sandboxed tool calls, updating `CanonicalState`, computing `APG`, updating `WindowGain` and `EMA`, and recording resource usage.
-- `src/tasksentry/harness/agent.py`:
-  - `@runtime_checkable` `Agent` Protocol requiring `step(state, plan, history) -> dict[str, Any]`.
-  - `ScriptedAgent` executing deterministic sequences of tool calls or actions.
-  - `FakeCodingAgent` generating multi-step plans, editing code, running tests, and requesting verification.
-- `src/tasksentry/core/runtime.py`:
-  - `CASERuntime` implementing the 10-step CASE runtime loop:
-    1. Read current canonical state.
-    2. Ask the model for the next action.
-    3. Validate and govern the action via `ActionGate`.
-    4. Execute through the sandbox via `Executor`.
-    5. Record observation, cost, latency, tokens, and events.
-    6. Run verification checks for active milestones.
-    7. Compute `APG` and state transitions.
-    8. Update `WindowGain` and `EMA`.
-    9. Apply stop and recovery policies via `evaluate_stop_conditions` and `RecoveryEngine`.
-    10. Continue, replan, compress, stop, or escalate.
+- `src/tasksentry/__init__.py`:
+  - Exposed complete public SDK interface: `AgentTask`, `Budget`, `BudgetPolicy`, `TaskReceipt`, `ToolGovernor`, `ToolRegistry`, `budget`, `tool`.
+  - Exposed storage and registry classes: `AgentRegistry`, `ModelRegistry`, `InMemoryReceiptStore`, `SQLiteReceiptStore`, `ReceiptStore`.
+- `src/tasksentry/config.py`:
+  - Implemented `TaskSentryConfig` with configuration precedence: explicit kwargs > `TASKSENTRY_*` environment variables > `tasksentry.yaml` / `tasksentry.yml` > default fallbacks.
+  - Never hardcodes or stores API keys.
+- `src/tasksentry/exceptions.py`:
+  - Added Phase 4 exceptions: `ModelError`, `ModelNotFoundError`, `StorageError`, `StorageTaskNotFoundError`, `AgentRegistryError`, `AgentNotFoundError`, `PolicyNotFoundError`.
 - `src/tasksentry/core/task.py`:
-  - `AgentTask` binding contract, runtime, and agents (`task.run(agent=...)`), generating a comprehensive `TaskReceipt`.
-- Test Suites:
-  - `tests/test_verification.py`: 10 tests
-  - `tests/test_recovery.py`: 6 tests
-  - `tests/test_stop_conditions.py`: 6 tests
-  - `tests/test_planner.py`: 5 tests
-  - `tests/test_executor.py`: 4 tests
-  - `tests/test_action_gate.py`: 4 tests
-  - `tests/test_agent_runtime.py`: 5 tests
-  - `tests/test_task_runtime.py`: 5 tests
-  - Total: 45 new tests, 170 total passing tests across the entire repository.
+  - Extended `AgentTask` to support high-level keyword configuration: `goal`, `max_llm_calls`, `max_tool_calls`, `max_tokens`, `max_cost_usd`, `max_wall_time_seconds`, `success_criteria`, `milestones`, `store`, and named agent string resolution via `AgentRegistry`.
+- `src/tasksentry/core/receipt.py`:
+  - Added `.receipt` convenience property on `TaskReceipt` returning self, enabling `print(result.receipt)` workflows.
+- `src/tasksentry/budget/budget.py`:
+  - Implemented `budget` context manager and `BudgetContext` powered by `contextvars.ContextVar`.
+  - Added methods: `record_usage`, `record_tool_call`, `check`, `remaining_budget`, `receipt`.
+  - Added enforcement modes: `raise` (`BudgetExceededError`), `summarize_and_stop`, user-provided `stop_callback`, and `both`.
+- `src/tasksentry/models/`:
+  - `base.py`: Defined `ModelResponse` data model and `ModelClient` protocol.
+  - `fake_model.py`: Deterministic offline `FakeModel` supporting queued canned responses and fallback message generation.
+  - `openai_compat.py`: `OpenAICompatibleClient` connecting to any OpenAI-compatible endpoint with tool schema conversion, token tracking, custom base URLs, and structured `ModelError` handling.
+  - `registry.py`: Implemented `ModelRegistry` (with custom Python callable models) and `AgentRegistry` loading declarative specifications from `agents/agents.yaml` and `agents/policies.yaml`.
+- `agents/` & `prompts/`:
+  - `agents/agents.yaml`: Declared `fake-coding-agent` mapping to `fake-model`, tools (`read_file`, `run_tests`, `search_workspace`), prompt file, and policy reference.
+  - `agents/policies.yaml`: Declared `coding-agent-default` execution policy.
+  - `prompts/coding_agent.md`: System prompt for the coding agent.
+- `src/tasksentry/integrations/`:
+  - `openai.py`: Implemented `tracked_client` returning an OpenAI-compatible client wrapper that automatically tracks token consumption, calculates costs using `DEFAULT_PRICING_TABLE`, and updates the active ambient `BudgetContext`.
+- `src/tasksentry/storage/`:
+  - `receipts.py`: Defined `ReceiptStore` protocol.
+  - `memory.py`: `InMemoryReceiptStore` for thread-safe in-memory caching and testing.
+  - `sqlite.py`: `SQLiteReceiptStore` local database with idempotent schema initialization, indexed lookups on `task_id` and `status`, transactions, and parameterized SQL queries preventing SQL injection.
+- `src/tasksentry/cli.py`:
+  - Standard library CLI supporting subcommands: `demo`, `run --task <path>`, `tasks`, `task <id>`, `receipt <id>`.
+  - `examples/coding_task.yaml`: Offline sample task contract.
+- Test suites:
+  - Added 42 new unit tests across 10 test modules (`test_public_api.py`, `test_agent_registry.py`, `test_budget_wrapper.py`, `test_openai_compat.py`, `test_openai_integration.py`, `test_storage_memory.py`, `test_storage_sqlite.py`, `test_receipt_store.py`, `test_config.py`, `test_cli.py`).
+  - Total tests passing: 212 tests.
 
-## Mathematical behavior
+## Public API
+The public SDK surface is exported directly from the top-level `tasksentry` namespace:
 
-### CASE Runtime Loop & State Transition
-At step $t$, the system maintains canonical task state $s_t = (g, M_t, K_t, W_t)$.
-The runtime asks the agent for action $a_t$.
-`ActionGate` verifies that $a_t$ is valid, safe, and not a duplicate according to action fingerprint $\text{fp}_t$.
-Upon execution, `Executor` evaluates transition $s_t \to s_{t+1}$ and records step metrics.
+```python
+from tasksentry import AgentTask, tool
 
-### Verification-Gated Completion
-The agent cannot mark milestones or tasks complete by declaring intent.
-Completion of milestone $m$ requires:
-$$V_m(s_{t+1}) = \text{True}$$
-Similarly, task completion requires:
-$$\forall c \in \text{success\_criteria}, \quad V_c(s_{t+1}) = \text{True}$$
-If an agent submits `complete_task` while any criterion fails, the gate rejects completion, records a `VERIFICATION_FAILED` event, and continues or escalates according to recovery policy.
+@tool
+def read_file(path: str) -> str:
+    """Read a file."""
+    return ""
 
-### APG & WindowGain Accounting
-Agent Progress Gain ($APG_t$) scores executed step $t$:
-$$APG_t = \alpha_1 \cdot \text{StateChange}_t + \alpha_2 \cdot \text{MilestoneProgress}_t + \alpha_3 \cdot \text{InfoGain}_t + \alpha_4 \cdot \text{EvidenceNovelty}_t - \alpha_5 \cdot \text{RepetitionPenalty}_t - \alpha_6 \cdot \text{NormalizedCost}_t$$
-$APG_t$ updates the rolling window of size $n$:
-$$\text{WindowGain}_t = \sum_{i=t-n+1}^{t} APG_i$$
-and the exponential moving average:
-$$\text{EMA}_t = \beta \cdot \text{EMA}_{t-1} + (1 - \beta) \cdot APG_t$$
+@tool
+def run_tests() -> dict:
+    """Run tests."""
+    return {"exit_code": 0}
 
-### Recovery Engine Decision Matrix
-| Failure | Action | Trigger Condition |
-|---|---|---|
-| Transient tool error | Retry with exponential backoff & jitter | `is_transient == True`, attempt $\le 3$ |
-| Malformed tool arguments | Return corrective schema error | Pydantic validation error |
-| Same tool fails 3 times | Force replan | `consecutive_failures >= 3` |
-| No progress for 3 steps | Force replan | `steps_without_progress >= 3` |
-| Context near limit | Compress context and checkpoint | tokens $\ge 0.85 \times \text{limit}$ |
-| Budget 80% consumed | Warn | usage $\ge 0.80 \times \text{limit}$ |
-| Budget exhausted | Stop and produce partial receipt | usage $\ge 1.0 \times \text{limit}$ (hard limit) |
-| Unsafe write | Pause for approval | write action violates safety policy |
-| Verification fails after completion claim | Reject completion & continue/escalate | $\exists c: V_c == \text{False}$ on `complete_task` |
-| 3 blocked duplicates | Escalate | `blocked_duplicates >= 3` |
+task = AgentTask(
+    goal="Find duplicated pricing logic and make the tests pass.",
+    max_llm_calls=12,
+    max_tool_calls=15,
+    max_tokens=60_000,
+    max_cost_usd=0.50,
+    max_wall_time_seconds=300,
+    success_criteria=[
+        {
+            "id": "tests_pass",
+            "verifier": "pytest",
+            "config": {"command": "pytest -q"},
+        }
+    ],
+    milestones=[
+        {
+            "id": "identify_duplicated_logic",
+            "done_when": {
+                "verifier": "artifact_exists",
+                "config": {"artifact": "analysis/duplicate_report.json"}
+            }
+        }
+    ],
+)
 
-### Backoff with Jitter
-For retry attempt $k \ge 1$:
-$$T_{\text{backoff}} = T_{\text{base}} \cdot 2^{k-1} + \text{Uniform}(0, \text{jitter})$$
+result = task.run(agent="fake-coding-agent")
+print(result.receipt)
+```
+
+## Agent registry
+The agent resolution workflow follows a declarative pipeline:
+1. When `task.run(agent="fake-coding-agent")` is called, the runner checks `AgentRegistry`.
+2. Agent specifications are read from `agents/agents.yaml` and policy definitions from `agents/policies.yaml`.
+3. The registry checks:
+   - That the agent identifier exists (raising `AgentNotFoundError` if missing).
+   - That the associated model is registered in `ModelRegistry` (raising `ModelNotFoundError` if missing).
+   - That the configured policy exists (raising `PolicyNotFoundError` if missing).
+   - That all tools specified in the agent's tool list are available in `ToolRegistry` (raising `ToolError` if missing).
+   - That the system prompt file exists and is readable (raising `AgentRegistryError` if missing).
+4. Policy overrides are merged on top of base policies.
+5. The agent is instantiated with resolved model, tools, prompt, and policy.
+
+## Budget wrapper
+The standalone budget context manager leverages Python's `contextvars.ContextVar`:
+- `_current_budget_context: contextvars.ContextVar[BudgetContext | None]` stores the ambient budget context.
+- Ambient contexts are isolated per execution context / thread / coroutine with zero process-global state leakage.
+- Nested `with budget(...)` blocks correctly save and restore outer contexts via context tokens.
+- Works independently of whether the user agent utilizes the full TaskSentry harness.
+
+Enforcement modes supported:
+1. `on_exceed="raise"`: Immediately raises `BudgetExceededError` when hard limits are crossed.
+2. `on_exceed="summarize_and_stop"`: Marks the context as stopped (`ctx.stopped = True`), halts subsequent actions, and generates a partial `TaskReceipt` without raising an exception.
+3. `stop_callback`: User-defined callable invoked upon limit violation.
+4. `on_exceed="both"`: Calls the stop callback / records stoppage, and raises `BudgetExceededError`.
+
+## Storage
+Task receipts and execution contracts are managed via the `ReceiptStore` protocol:
+- **`InMemoryReceiptStore`**: Fast, thread-safe in-memory store suitable for testing and ephemeral workflows.
+- **`SQLiteReceiptStore`**: Local, self-contained file database using SQLite:
+  - Idempotent table and index creation (`CREATE TABLE IF NOT EXISTS`).
+  - Indexes on `task_id` and `status` for fast query performance.
+  - Parameterized queries to eliminate SQL injection vulnerabilities.
+  - ACID transactional integrity via Python `sqlite3` context management.
+  - Stores receipt data, contract definitions, metadata, and timestamps (`created_at`, `updated_at`).
+
+## CLI
+The `tasksentry` CLI is implemented with standard library `argparse`:
+- `python -m tasksentry.cli --help`: Displays help and subcommand information.
+- `python -m tasksentry.cli demo`: Executes a fully offline autonomous agent task under budget control, outputs receipt metrics, and saves the record to SQLite.
+- `python -m tasksentry.cli run --task <path>`: Parses a YAML task contract, executes it with the requested agent, and prints JSON receipt.
+- `python -m tasksentry.cli tasks`: Lists recorded tasks from the SQLite database.
+- `python -m tasksentry.cli task <task_id>`: Prints full record details for a specific task.
+- `python -m tasksentry.cli receipt <task_id>`: Dumps the JSON receipt for a specific task.
 
 ## Test results
 Actual output of running `conda run -n thermo_agent pytest -q`:
 ```
-........................................................................ [ 42%]
-........................................................................ [ 84%]
-..........................                                               [100%]
-170 passed in 7.66s
+........................................................................ [ 33%]
+........................................................................ [ 67%]
+....................................................................     [100%]
+212 passed in 8.25s
 ```
 
 ## Lint and type results
@@ -147,12 +151,14 @@ All checks passed!
 
 Actual output of running `conda run -n thermo_agent mypy src/tasksentry`:
 ```
-Success: no issues found in 33 source files
+Success: no issues found in 46 source files
 ```
 
 ## Known limitations
-- **Subprocess execution environment**: Verifiers such as `pytest`, `command_exit_code`, and `python_assert` invoke subprocesses. In environments where the Python executable path contains spaces or platform-specific characters (such as Windows default installations), arguments must be passed as lists rather than shell-joined strings to prevent delimiter misinterpretation.
-- **Deterministic vs semantic verifiers**: Current verifiers execute deterministic checks (exit codes, regexes, schemas, numerical thresholds, file presence). Complex semantic code reviews or model self-judgments require wrapping within deterministic assertion scripts.
+- **OpenAI integration is optional**: The `tracked_client` wrapper is built to interface with OpenAI-compatible HTTP endpoints (such as vLLM, Ollama, or OpenAI) without requiring the external `openai` pip package. For native OpenAI client features (like function streaming), users can pass custom transports.
+- **SQLite is local-only**: SQLite provides local single-host storage. Distributed or multi-node production deployments will require a dedicated database backend.
+- **CLI is minimal**: The CLI focuses on core offline execution, contract running, and receipt inspection. It intentionally avoids heavy GUI/TUI framework dependencies.
+- **No hosted dashboard yet**: Telemetry is currently inspected through the CLI and SQLite records. Phase 5 introduces the dashboard and benchmarking framework.
 
 ## Next phase
-Phase 4: Benchmarks, CLI, and dashboard/telemetry.
+Phase 5: benchmark, reporting, and dashboard.
