@@ -165,3 +165,20 @@ Aggregate Results:
 3. **Containerized Sandboxing**: Docker and Podman execution drivers for untrusted code execution.
 4. **Policy Learning**: Empirical APG weight tuning based on task category.
 5. **Advanced Context Compaction**: Checkpointed state compaction and rollback capabilities.
+
+
+---
+
+# Phase 7 Report: TaskSentry Console & Semantic Model Routing
+
+## Status
+PASS
+
+## Highlights
+- **Chat-First Console**: Full interactive agent console with live chat, Server-Sent Events (SSE) streaming, and WebSocket support.
+- **Semantic Model Routing**: Real-time routing across local Ollama models with Fast Routine (`qwen2.5:3b`, `llama3.2:1b`, `gemma2:2b`) and Deep Reasoning (`qwen3:4b-instruct-2507-q4_K_M`, `ornith:latest`) lanes.
+- **Auditable Explanations**: Every model selection reports rationale, complexity signals, stagnant steps count, open failures count, and fallbacks.
+- **Human-in-the-Loop Approvals**: Write-capable tools (`write_text_file`, `run_command`, etc.) pause the agent and prompt the user to approve or reject actions.
+- **Router Playground**: Interactive multi-lane prompt comparison testing routine, reasoning, and routed decisions.
+- **Telemetry & Verification**: Real-time budget burn-down meters, verification gate status, loop controller metrics, and instant JSON receipt downloads.
+- **Test Suite**: 298 total passing tests (including 46 new console tests covering chat, routing, approvals, streaming, receipts, and model health).

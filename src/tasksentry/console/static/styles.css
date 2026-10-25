@@ -1,0 +1,525 @@
+/* TaskSentry Console Modern Dark Styling */
+:root {
+  --bg-main: #0b0f19;
+  --bg-card: #111827;
+  --bg-card-hover: #1f2937;
+  --bg-card-subtle: #172033;
+  --border-color: #1f2937;
+  --border-highlight: #374151;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent-primary: #10b981;
+  --accent-blue: #3b82f6;
+  --accent-amber: #f59e0b;
+  --accent-rose: #ef4444;
+  --accent-purple: #8b5cf6;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.console-header {
+  height: 56px;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-card-hover);
+}
+
+.nav-tab.active {
+  color: #fff;
+  background-color: var(--bg-card-hover);
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-primary);
+}
+
+/* Layout Columns */
+.console-workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr 340px;
+  overflow: hidden;
+}
+
+/* Left Sidebar */
+.left-sidebar {
+  background-color: var(--bg-card);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.btn-new-task {
+  background-color: var(--accent-primary);
+  color: #0b0f19;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+.btn-new-task:hover {
+  opacity: 0.9;
+}
+
+.sidebar-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.task-item {
+  padding: 10px 12px;
+  background-color: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.task-item:hover, .task-item.active {
+  border-color: var(--accent-blue);
+  background-color: var(--bg-card-hover);
+}
+
+.task-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.task-item-id {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--accent-blue);
+}
+
+.status-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-completed { background-color: rgba(16, 185, 129, 0.2); color: var(--accent-primary); }
+.status-running { background-color: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+.status-waiting_approval { background-color: rgba(245, 158, 11, 0.2); color: var(--accent-amber); }
+.status-failed { background-color: rgba(239, 68, 68, 0.2); color: var(--accent-rose); }
+.status-stopped { background-color: rgba(107, 114, 128, 0.2); color: var(--text-secondary); }
+
+.task-item-goal {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Center Panel (Chat / Playground) */
+.center-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-main);
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.message-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 85%;
+}
+
+.message-user {
+  align-self: flex-end;
+}
+
+.message-user .message-bubble {
+  background-color: var(--accent-blue);
+  color: #fff;
+  border-radius: 12px 12px 2px 12px;
+  padding: 12px 16px;
+  font-size: 0.92rem;
+}
+
+.message-agent {
+  align-self: flex-start;
+  width: 100%;
+}
+
+.message-agent .message-bubble {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px 12px 12px 2px;
+  padding: 16px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* Tool execution card */
+.tool-card {
+  background-color: var(--bg-card-subtle);
+  border-left: 3px solid var(--accent-purple);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  margin: 6px 0;
+}
+
+.tool-card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--accent-purple);
+}
+
+.tool-args {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Approval Prompt Card */
+.approval-card {
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid var(--accent-amber);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 8px 0;
+}
+
+.approval-header {
+  color: var(--accent-amber);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-approve {
+  background-color: var(--accent-primary);
+  color: #0b0f19;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-reject {
+  background-color: var(--accent-rose);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Chat Input Form */
+.chat-input-bar {
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-textarea {
+  flex: 1;
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-highlight);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  resize: none;
+  height: 48px;
+}
+
+.chat-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.btn-send {
+  background-color: var(--accent-primary);
+  color: #0b0f19;
+  border: none;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-options-row {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  align-items: center;
+}
+
+.chat-select {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+/* Right Sidebar (Live Inspector) */
+.right-sidebar {
+  background-color: var(--bg-card);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.inspector-card {
+  background-color: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.inspector-card-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Routing badge */
+.route-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.route-routine { background-color: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+.route-reasoning { background-color: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+
+.route-explanation {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* Progress bar */
+.progress-container {
+  margin-top: 6px;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.progress-bar-bg {
+  height: 6px;
+  background-color: var(--bg-card-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--accent-primary);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.btn-download-receipt {
+  width: 100%;
+  background-color: var(--bg-card-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-highlight);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-download-receipt:hover {
+  background-color: var(--border-highlight);
+}
+
+/* Router Playground view */
+.playground-view {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  gap: 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.playground-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.playground-lane-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.playground-lane-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

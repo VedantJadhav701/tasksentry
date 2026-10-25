@@ -118,3 +118,42 @@ Agent Action -> ActionGate -> ToolGovernor -> Sandbox -> Tool Callable
                                    v
                            Stop Conditions
 ```
+
+
+---
+
+## 4. Console & Semantic Routing Plane
+
+The Phase 7 TaskSentry Console introduces a chat-first interactive plane with real-time semantic model routing across local Ollama LLMs:
+
+```
+           +---------------------------------------------+
+           |             TaskSentry Console              |
+           |  (Chat UI, SSE Stream, Routing Inspector)   |
+           +---------------------------------------------+
+                                  |
+                                  v
+           +---------------------------------------------+
+           |             ConsoleRunManager               |
+           |  (Async SSE Streams, Approvals, Run Queue)  |
+           +---------------------------------------------+
+                                  |
+                                  v
+           +---------------------------------------------+
+           |            SemanticModelRouter              |
+           |     (Signal Engine & Lane Classifier)       |
+           +---------------------------------------------+
+                  /                               \
+                 v                                 v
+        +------------------+             +--------------------+
+        |   Routine Lane   |             |   Reasoning Lane   |
+        |   (Fast Tools)   |             | (Planning & Recov) |
+        |    qwen2.5:3b    |             | qwen3:4b / ornith  |
+        +------------------+             +--------------------+
+```
+
+### Key Console Capabilities:
+- **`SemanticModelRouter` (`src/tasksentry/models/router.py`)**: Dynamic signal-based routing classifying prompts into fast routine vs. deep reasoning lanes with automated fallbacks.
+- **`ApprovalManager` (`src/tasksentry/console/approvals.py`)**: Human-in-the-loop pause-and-resume gate for unsafe write actions.
+- **`RouterPlayground` (`src/tasksentry/console/routing.py`)**: Multi-lane comparison engine comparing routine, reasoning, and routed decisions.
+- **`ConsoleRunManager` (`src/tasksentry/console/runs.py`)**: Background execution manager broadcasting lifecycle events via Server-Sent Events (SSE).

@@ -235,6 +235,15 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_console(args: argparse.Namespace) -> int:
+    """Start the chat-first TaskSentry Console application."""
+    from tasksentry.console.app import run_console
+
+    print(f"Starting TaskSentry Console on http://{args.host}:{args.port}")
+    run_console(host=args.host, port=args.port)
+    return 0
+
+
 def cmd_benchmark_report(args: argparse.Namespace) -> int:
     """Print or inspect a saved benchmark report."""
     run_id = args.run
@@ -324,6 +333,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_dash.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
     p_dash.add_argument("--port", type=int, default=8321, help="Bind port (default 8321)")
 
+    # console
+    p_console = subparsers.add_parser("console", help="Start chat-first local TaskSentry Console")
+    p_console.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
+    p_console.add_argument("--port", type=int, default=8321, help="Bind port (default 8321)")
+
     # benchmark-report
     p_brep = subparsers.add_parser("benchmark-report", help="Inspect saved benchmark report")
     p_brep.add_argument("--run", "-r", required=True, help="Benchmark run ID or filename")
@@ -351,6 +365,7 @@ def main(argv: list[str] | None = None) -> int:
         "benchmark": cmd_benchmark,
         "ollama-health": cmd_ollama_health,
         "dashboard": cmd_dashboard,
+        "console": cmd_console,
         "benchmark-report": cmd_benchmark_report,
     }
 

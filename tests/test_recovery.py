@@ -1,5 +1,7 @@
 """Unit tests for the RecoveryEngine and context compaction."""
 
+from typing import Any
+
 from tasksentry.harness.recovery import (
     RecoveryAction,
     RecoveryEngine,

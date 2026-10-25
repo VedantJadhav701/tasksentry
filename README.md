@@ -240,6 +240,26 @@ See [docs/benchmark.md](docs/benchmark.md) and [docs/ollama.md](docs/ollama.md) 
 
 ---
 
+## TaskSentry Console (Chat-First Agent Control Plane)
+
+TaskSentry includes a chat-first agent console featuring real-time semantic model routing across local Ollama LLMs, live step streaming, human-in-the-loop write approvals, and auditable task receipts:
+
+```bash
+tasksentry console --host 127.0.0.1 --port 8321
+```
+
+Visit `http://127.0.0.1:8321` in your browser.
+
+- **Interactive Chat Interface**: Send tasks in natural language, watch the agent plan, call tools, and verify acceptance criteria in real-time.
+- **Semantic Model Routing**: Real-time signals route tasks to Fast Routine models (`qwen2.5:3b`, `llama3.2:1b`) or Deep Reasoning models (`qwen3:4b`, `ornith`).
+- **Human Approval Gates**: Write operations pause safely for explicit user approval.
+- **Router Playground**: Compare prompts across routine, reasoning, and routed lanes side-by-side.
+- **Auditable Receipts**: Instant JSON export for auditing cost, tokens, and verification results.
+
+See [docs/console.md](docs/console.md) for full console documentation.
+
+---
+
 ## Local Dashboard
 
 TaskSentry provides a local-only developer dashboard for inspecting tasks, receipts, step-by-step events, metrics, and benchmark reports:
@@ -267,6 +287,7 @@ Visit `http://127.0.0.1:8321` in your browser.
 ## Documentation Index
 
 - [Architecture Guide](docs/architecture.md)
+- [Console Guide](docs/console.md)
 - [Mathematical Foundations](docs/mathematics.md)
 - [Quickstart Guide](docs/quickstart.md)
 - [TaskSentryBench Specification](docs/benchmark.md)

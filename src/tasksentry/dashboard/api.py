@@ -144,12 +144,35 @@ def get_ollama_models() -> dict[str, Any]:
 @router.post("/tasks/{task_id}/stop")
 def stop_task(task_id: str) -> dict[str, Any]:
     """Request early termination of an active task."""
+    from tasksentry.console.runs import default_run_manager
+
+    # If running in active console background runner, signal stop
+    live_run = default_run_manager.get(task_id)
+    if live_run:
+        live_run.request_stop()
+
     store = _get_store()
     receipt = store.get(task_id)
     if not receipt:
+        if live_run:
+            return {"status": "stopped", "task_id": task_id}
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
     updated = receipt.model_copy(
         update={"status": "stopped", "final_status": "stopped", "success": False}
     )
     store.update(updated)
     return {"status": "stopped", "task_id": task_id}
+
+
+@router.get("/console/status")
+def get_console_status() -> dict[str, Any]:
+    """Report console runner status, active background runs, and pending approvals."""
+    from tasksentry.console.runs import default_run_manager
+
+    runs = default_run_manager.list_runs(limit=10)
+    active_statuses = ("running", "waiting_approval")
+    active_count = len([r for r in runs if r.get("status") in active_statuses])
+    return {
+        "active_runs_count": active_count,
+        "recent_runs": runs,
+    }

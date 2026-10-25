@@ -25,6 +25,8 @@ class TaskSentryConfig(BaseModel):
     database_path: str = Field(default="tasksentry.db")
     dashboard_host: str = Field(default="127.0.0.1")
     dashboard_port: int = Field(default=8080, ge=1, le=65535)
+    console_host: str = Field(default="127.0.0.1")
+    console_port: int = Field(default=8321, ge=1, le=65535)
     default_policy: str = Field(default="default")
     model_registry_path: str | None = None
     tool_registry_path: str | None = None

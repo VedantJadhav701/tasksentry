@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskSentry Console | Budget-Native Agent Harness</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="console-header">
+    <div class="brand">
+      <span style="color: var(--accent-primary);">⚡</span>
+      <span>TaskSentry Console</span>
+      <span class="brand-badge">v0.1.0</span>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-view="chat">Chat Console</button>
+      <button class="nav-tab" data-view="playground">Router Playground</button>
+      <button class="nav-tab" data-view="models">Model Health</button>
+    </nav>
+
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span id="header-ollama-status">Ollama Local Mesh Active</span>
+    </div>
+  </header>
+
+  <!-- 3-Column Workspace -->
+  <div class="console-workspace">
+
+    <!-- Left Sidebar: Task History & Controls -->
+    <aside class="left-sidebar">
+      <button class="btn-new-task" id="btn-new-task-sidebar">
+        <span>+</span> New Governed Task
+      </button>
+
+      <div>
+        <div class="sidebar-section-title">Recent Task Contracts</div>
+        <div class="tasks-list" id="recent-tasks-list">
+          <div style="color: var(--text-muted); font-size: 0.8rem; padding: 8px;">Loading tasks...</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Main View -->
+    <main class="center-container">
+
+      <!-- View 1: Chat Window -->
+      <div id="chat-view-container" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="chat-messages" id="chat-messages-container">
+          <div class="message-card message-agent">
+            <div class="message-bubble">
+              <div style="font-weight: 700; color: var(--accent-primary); margin-bottom: 4px;">Welcome to TaskSentry Console</div>
+              <div style="color: var(--text-secondary); line-height: 1.5;">
+                Enter a task prompt below. TaskSentry will dynamically route your query to the optimal local Ollama model (fast routine vs deep reasoning lane), execute under strict budget control, verify milestones, and generate an auditable receipt.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-bar">
+          <div class="chat-input-row">
+            <textarea
+              class="chat-textarea"
+              id="chat-input-text"
+              placeholder="e.g. Inspect repository files, verify pyproject.toml, and check test suite..."
+            ></textarea>
+            <button class="btn-send" id="btn-send-task">Run Task</button>
+          </div>
+
+          <div class="chat-options-row">
+            <div>
+              Routine Lane:
+              <select class="chat-select" id="select-routine-model">
+                <option value="qwen2.5:3b">qwen2.5:3b</option>
+                <option value="llama3.2:1b">llama3.2:1b</option>
+              </select>
+            </div>
+            <div>
+              Reasoning Lane:
+              <select class="chat-select" id="select-reasoning-model">
+                <option value="qwen3:4b-instruct-2507-q4_K_M">qwen3:4b-instruct-2507-q4_K_M</option>
+                <option value="ornith:latest">ornith:latest</option>
+              </select>
+            </div>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="check-allow-writes">
+              <span>Auto-approve write actions</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 2: Router Playground -->
+      <div id="playground-view-container" class="playground-view" style="display: none;">
+        <div>
+          <h2 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 6px;">Semantic Model Router Playground</h2>
+          <p style="color: var(--text-secondary); font-size: 0.88rem;">
+            Test any prompt and compare how the routine model, deep reasoning model, and semantic router decision compare in latency, token usage, and quality.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <input
+            type="text"
+            id="playground-prompt-input"
+            placeholder="Enter prompt (e.g., 'Investigate test failure root cause and plan refactoring')"
+            style="flex: 1; background: var(--bg-card); border: 1px solid var(--border-highlight); padding: 12px; border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;"
+          >
+          <button class="btn-send" id="btn-eval-playground">Compare Lanes</button>
+        </div>
+
+        <div id="playground-results-container">
+          <div style="color: var(--text-muted); font-size: 0.85rem;">Enter a prompt above to evaluate lane decisions.</div>
+        </div>
+      </div>
+
+      <!-- View 3: Model Health -->
+      <div id="health-view-container" style="display: none; padding: 24px; overflow-y: auto;">
+        <h2 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 6px;">Ollama Model Mesh Status</h2>
+        <div id="model-health-container" style="margin-top: 16px;"></div>
+      </div>
+
+    </main>
+
+    <!-- Right Sidebar: Live Task Inspector -->
+    <aside class="right-sidebar">
+      <div style="font-weight: 700; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>Task Inspector</span>
+        <span style="font-size: 0.72rem; color: var(--accent-primary); background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px;">LIVE</span>
+      </div>
+
+      <!-- Model Route Inspector -->
+      <div class="inspector-card">
+        <div class="inspector-card-title">
+          <span>Model Routing</span>
+          <span style="color: var(--accent-blue);">LANE</span>
+        </div>
+        <div id="route-inspector-body">
+          <div style="color: var(--text-muted); font-size: 0.8rem;">Awaiting step execution...</div>
+        </div>
+      </div>
+
+      <!-- Budget Burn-down -->
+      <div class="inspector-card">
+        <div class="inspector-card-title">
+          <span>Budget Usage</span>
+          <span style="color: var(--accent-primary);">LIMITS</span>
+        </div>
+        <div id="budget-inspector-body">
+          <div style="color: var(--text-muted); font-size: 0.8rem;">Budget tracking idle...</div>
+        </div>
+      </div>
+
+      <!-- Verification Gates -->
+      <div class="inspector-card">
+        <div class="inspector-card-title">
+          <span>Verification Gates</span>
+          <span style="color: var(--accent-amber);">GATES</span>
+        </div>
+        <div id="verif-inspector-body">
+          <div style="color: var(--text-muted); font-size: 0.8rem;">No active verifiers.</div>
+        </div>
+      </div>
+
+      <!-- Timeline Events -->
+      <div class="inspector-card" style="max-height: 200px; overflow-y: auto;">
+        <div class="inspector-card-title">
+          <span>Event Timeline</span>
+          <span style="color: var(--accent-purple);">LOG</span>
+        </div>
+        <div id="timeline-inspector-body">
+          <div style="color: var(--text-muted); font-size: 0.8rem;">No events recorded.</div>
+        </div>
+      </div>
+
+      <!-- Task Receipt -->
+      <div class="inspector-card">
+        <div class="inspector-card-title">
+          <span>Task Receipt</span>
+          <span style="color: var(--text-secondary);">AUDIT</span>
+        </div>
+        <div id="receipt-inspector-body">
+          <div style="color: var(--text-muted); font-size: 0.8rem;">Receipt generated upon task completion.</div>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- Component Scripts -->
+  <script src="/static/components/ChatWindow.js"></script>
+  <script src="/static/components/RunTimeline.js"></script>
+  <script src="/static/components/ModelRoutePanel.js"></script>
+  <script src="/static/components/BudgetPanel.js"></script>
+  <script src="/static/components/VerificationPanel.js"></script>
+  <script src="/static/components/ReceiptPanel.js"></script>
+  <script src="/static/components/ModelHealthPanel.js"></script>
+
+  <!-- Controllers -->
+  <script src="/static/chat.js"></script>
+  <script src="/static/console.js"></script>
+
+</body>
+</html>
