@@ -202,9 +202,7 @@ class HypothesisBeliefTracker:
             weights[hypothesis] = like * p
         evidence = sum(weights.values())
         if evidence <= 0.0:
-            raise InformationGainError(
-                "observation has zero probability under every hypothesis"
-            )
+            raise InformationGainError("observation has zero probability under every hypothesis")
         posterior = {h: w / evidence for h, w in weights.items()}
         before = entropy(prior.values())
         after = entropy(posterior.values())
@@ -262,12 +260,8 @@ class ProxyInformationGain:
         increase in completed milestones).
         """
         init = self._initial
-        failures = max(0, init.open_failures - snapshot.open_failures) / max(
-            init.open_failures, 1
-        )
-        checks = max(0, snapshot.passed_checks - init.passed_checks) / max(
-            init.passed_checks, 1
-        )
+        failures = max(0, init.open_failures - snapshot.open_failures) / max(init.open_failures, 1)
+        checks = max(0, snapshot.passed_checks - init.passed_checks) / max(init.passed_checks, 1)
         milestones = max(0, snapshot.completed_milestones - init.completed_milestones) / max(
             init.completed_milestones, 1
         )

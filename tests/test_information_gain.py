@@ -22,9 +22,7 @@ def _tracker() -> HypothesisBeliefTracker:
         "failure in pricing.py": {"pricing": 0.9, "billing": 0.1},
         "failure in billing.py": {"pricing": 0.1, "billing": 0.9},
     }
-    return HypothesisBeliefTracker(
-        {"pricing": 0.5, "billing": 0.5}, TableLikelihoodModel(table)
-    )
+    return HypothesisBeliefTracker({"pricing": 0.5, "billing": 0.5}, TableLikelihoodModel(table))
 
 
 def test_entropy_known_values() -> None:

@@ -93,8 +93,10 @@ def test_embedding_backend_is_pluggable_and_clamps_negative() -> None:
 
 def test_argument_similarity_detects_near_duplicates_but_not_different_values() -> None:
     near = argument_similarity(
-        "search", {"query": "find duplicated pricing logic"},
-        "search", {"query": "find duplicated pricing logic"},
+        "search",
+        {"query": "find duplicated pricing logic"},
+        "search",
+        {"query": "find duplicated pricing logic"},
     )
     assert near == 1.0
     different_file = argument_similarity(

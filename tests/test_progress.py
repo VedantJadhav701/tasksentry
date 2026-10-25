@@ -28,7 +28,12 @@ RunStep = Callable[..., StepScore]
 def test_default_weights_match_specification() -> None:
     w = APGWeights()
     assert (w.alpha_1, w.alpha_2, w.alpha_3, w.alpha_4, w.alpha_5, w.alpha_6) == (
-        1.0, 1.0, 0.8, 0.8, 2.0, 0.1,
+        1.0,
+        1.0,
+        0.8,
+        0.8,
+        2.0,
+        0.1,
     )
 
 
@@ -215,8 +220,10 @@ def test_new_evidence_and_milestone_progress_exempt_repeats(
     assert fresh.breakdown.components.repetition_penalty == 0.0
 
     milestone = run_step(
-        tracker, output="a completely different and informative result set",
-        milestones_before=0, milestones_after=1,
+        tracker,
+        output="a completely different and informative result set",
+        milestones_before=0,
+        milestones_after=1,
     )
     assert "milestone_progress" in milestone.exemptions.active
     assert milestone.breakdown.components.repetition_penalty == 0.0

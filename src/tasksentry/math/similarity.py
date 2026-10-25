@@ -30,9 +30,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, Protocol, runtime_checkable
 
 _UUID = r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
-_ISO_TIMESTAMP = (
-    r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?"
-)
+_ISO_TIMESTAMP = r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?"
 _CLOCK_TIME = r"\b\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\b"
 _REQUEST_ID = r"(?i)\b(?:request|req)[_-]?id\b\s*[=:]\s*(?:<[a-z_]+>|[\w.\-]+)"
 _TRACE_ID = r"(?i)\b(?:trace|span)[_-]?id\b\s*[=:]\s*(?:<[a-z_]+>|[\w.\-]+)"

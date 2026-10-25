@@ -10,6 +10,22 @@ from tasksentry.core.contract import (
     TaskContract,
     VerifierSpec,
 )
+from tasksentry.core.events import (
+    BUDGET_EXCEEDED,
+    BUDGET_HARD_LIMIT,
+    BUDGET_WARNING,
+    RETRY,
+    RETRY_EXEMPTED,
+    TOOL_BLOCKED_DUPLICATE,
+    TOOL_ERROR,
+    TOOL_REGISTERED,
+    TOOL_SUCCESS,
+    TOOL_TIMEOUT,
+    TOOL_VALIDATION_FAILED,
+    Event,
+    EventType,
+)
+from tasksentry.core.receipt import TaskReceipt
 from tasksentry.core.state import (
     CanonicalState,
     action_fingerprint,
@@ -22,14 +38,28 @@ from tasksentry.core.state import (
 )
 
 __all__ = [
+    "BUDGET_EXCEEDED",
+    "BUDGET_HARD_LIMIT",
+    "BUDGET_WARNING",
+    "RETRY",
+    "RETRY_EXEMPTED",
+    "TOOL_BLOCKED_DUPLICATE",
+    "TOOL_ERROR",
+    "TOOL_REGISTERED",
+    "TOOL_SUCCESS",
+    "TOOL_TIMEOUT",
+    "TOOL_VALIDATION_FAILED",
     "VERIFIER_NAMES",
     "BudgetLimits",
     "CanonicalState",
+    "Event",
+    "EventType",
     "HypothesisSpec",
     "Milestone",
     "SafetyRules",
     "SuccessCriterion",
     "TaskContract",
+    "TaskReceipt",
     "VerifierSpec",
     "action_fingerprint",
     "build_coding_world",
