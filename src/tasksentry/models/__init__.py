@@ -11,6 +11,7 @@ from tasksentry.models.registry import (
     PolicyDefinition,
     ResolvedAgent,
 )
+from tasksentry.models.router import SemanticModelRouter
 
 __all__ = [
     "AgentDefinition",
@@ -23,5 +24,6 @@ __all__ = [
     "OpenAICompatibleClient",
     "PolicyDefinition",
     "ResolvedAgent",
+    "SemanticModelRouter",
     "check_ollama_health",
 ]

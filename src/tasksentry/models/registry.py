@@ -85,12 +85,40 @@ class ModelRegistry:
 
     def get(self, name: str) -> ModelClient:
         """Lookup a model client by name or raise ModelNotFoundError."""
-        if name not in self._models:
-            raise ModelNotFoundError(f"Model '{name}' is not registered.")
-        return self._models[name]
+        if name in self._models:
+            return self._models[name]
+
+        if name in ("semantic-router", "semantic_router", "router"):
+            from tasksentry.models.router import SemanticModelRouter
+
+            self._models[name] = SemanticModelRouter()
+            return self._models[name]
+
+        known_prefixes = ("qwen", "llama", "gemma", "ornith", "beam", "mistral", "phi")
+        is_ollama_format = (
+            ":" in name
+            or "ollama" in name.lower()
+            or any(name.startswith(p) for p in known_prefixes)
+        )
+        if is_ollama_format:
+            from tasksentry.models.ollama import OllamaClient
+
+            self._models[name] = OllamaClient(model=name)
+            return self._models[name]
+
+        raise ModelNotFoundError(f"Model '{name}' is not registered.")
 
     def has(self, name: str) -> bool:
-        return name in self._models
+        if name in self._models:
+            return True
+        if name in ("semantic-router", "semantic_router", "router"):
+            return True
+        known_prefixes = ("qwen", "llama", "gemma", "ornith", "beam", "mistral", "phi")
+        return (
+            ":" in name
+            or "ollama" in name.lower()
+            or any(name.startswith(p) for p in known_prefixes)
+        )
 
 
 class PolicyDefinition(BaseModel):

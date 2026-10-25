@@ -95,7 +95,7 @@ def test_unsafe_write_requires_approval() -> None:
 
 
 def test_context_compaction_and_checkpoint() -> None:
-    messages = [
+    messages: list[dict[str, Any]] = [
         {"role": "user", "content": "initial instructions"},
         {"role": "assistant", "content": "running tool"},
         {"role": "tool", "content": "error in step 1", "is_error": True},

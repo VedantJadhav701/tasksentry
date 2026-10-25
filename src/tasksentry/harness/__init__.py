@@ -1,7 +1,7 @@
 """TaskSentry CASE harness: agent runtime, verification, planning, recovery, and governance."""
 
 from tasksentry.harness.action_gate import ActionGate, GovernedActionVerdict
-from tasksentry.harness.agent import Agent, FakeCodingAgent, ScriptedAgent
+from tasksentry.harness.agent import Agent, FakeCodingAgent, LLMAgent, ScriptedAgent
 from tasksentry.harness.executor import Executor, StepResult
 from tasksentry.harness.planner import Plan, Planner
 from tasksentry.harness.recovery import (
@@ -23,6 +23,7 @@ __all__ = [
     "Executor",
     "FakeCodingAgent",
     "GovernedActionVerdict",
+    "LLMAgent",
     "Plan",
     "Planner",
     "RecoveryAction",

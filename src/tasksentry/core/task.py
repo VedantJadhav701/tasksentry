@@ -110,29 +110,44 @@ class AgentTask:
         if isinstance(agent, str):
             if agent in ("fake-coding-agent", "fake_coding_agent"):
                 runner = FakeCodingAgent()
-            elif self.agent_registry is not None:
-                try:
-                    self.agent_registry.resolve(agent)
-                    runner = FakeCodingAgent()
-                except Exception:
-                    raise
             else:
-                # Try default agents.yaml if exists
-                try:
-                    from tasksentry.models.registry import AgentRegistry
+                from tasksentry.harness.agent import LLMAgent
+                from tasksentry.models.fake_model import FakeModel
+                from tasksentry.models.registry import AgentRegistry
 
-                    default_reg = AgentRegistry()
-                    default_reg.load_from_files()
-                    default_reg.resolve(agent)
-                    runner = FakeCodingAgent()
+                target_reg = self.agent_registry
+                if target_reg is None:
+                    target_reg = AgentRegistry()
+                    target_reg.load_from_files()
+
+                try:
+                    resolved = target_reg.resolve(agent)
+                    if isinstance(resolved.model_client, FakeModel):
+                        runner = FakeCodingAgent()
+                    else:
+                        runner = LLMAgent(
+                            model_client=resolved.model_client,
+                            registry=self.runtime.registry,
+                            system_prompt=resolved.system_prompt or None,
+                        )
                 except AgentNotFoundError:
-                    raise
+                    if target_reg.model_registry.has(agent):
+                        client = target_reg.model_registry.get(agent)
+                        runner = LLMAgent(
+                            model_client=client,
+                            registry=self.runtime.registry,
+                        )
+                    else:
+                        raise
                 except Exception as exc:
                     raise AgentNotFoundError(f"Unknown named agent '{agent}': {exc}") from exc
         elif isinstance(agent, Agent):
             runner = agent
         else:
             runner = ScriptedAgent(list(agent))
+
+        if hasattr(runner, "budget") and runner.budget is None:
+            runner.budget = self.runtime.budget
 
         receipt = self.runtime.run_loop(runner, max_steps=max_steps)
 

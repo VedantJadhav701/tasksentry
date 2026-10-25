@@ -26,35 +26,74 @@ def _load_yaml(path: str) -> dict[str, Any]:
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
-    """Run an offline demo task and print receipt."""
-    print("Running TaskSentry offline demo...")
+    """Run an offline or live demo task and print receipt."""
     cfg = load_config()
     store = SQLiteReceiptStore(cfg.database_path)
 
-    task = AgentTask(
-        goal="Demonstrate offline autonomous task execution under budget governance",
-        max_llm_calls=5,
-        max_tool_calls=10,
-        max_tokens=20000,
-        max_cost_usd=0.25,
-        max_wall_time_seconds=60,
-        success_criteria=[
-            {
-                "id": "verify_offline_result",
-                "verifier": "numeric_range",
-                "config": {"value": 1, "min": 0},
-            }
-        ],
-        milestones=[
-            {
-                "id": "demo_milestone",
-                "done_when": {"verifier": "numeric_range", "config": {"value": 1, "min": 0}},
-            }
-        ],
-        store=store,
-    )
+    if getattr(args, "live", False):
+        import tasksentry.tools.builtin  # noqa: F401 - ensure builtins are registered
+        from tasksentry.harness.agent import LLMAgent
+        from tasksentry.models.router import SemanticModelRouter
 
-    receipt = task.run(agent="fake-coding-agent", max_steps=5)
+        routine = getattr(args, "routine_model", None) or "qwen2.5:3b"
+        reasoning = getattr(args, "reasoning_model", None) or "qwen3:4b-instruct-2507-q4_K_M"
+
+        print("==================================================")
+        print(" TASK SENTRY LIVE AGENT EXECUTION")
+        print("==================================================")
+        print("Routing configuration:")
+        print(f"  * Fast routine model:   {routine}")
+        print(f"  * Deep reasoning model: {reasoning}")
+        print("Starting task under budget governance...\n")
+
+        router = SemanticModelRouter(
+            routine_model=routine,
+            reasoning_model=reasoning,
+        )
+        task = AgentTask(
+            goal="Inspect current project directory, list key files, and confirm repository status",
+            max_llm_calls=5,
+            max_tool_calls=5,
+            max_tokens=15000,
+            max_cost_usd=0.25,
+            max_wall_time_seconds=60,
+            success_criteria=[
+                {
+                    "id": "check_workspace_valid",
+                    "verifier": "file_exists",
+                    "config": {"path": "pyproject.toml"},
+                }
+            ],
+            store=store,
+        )
+        agent = LLMAgent(model_client=router, registry=task.runtime.registry)
+        receipt = task.run(agent=agent, max_steps=4)
+    else:
+        print("Running TaskSentry offline demo...")
+        task = AgentTask(
+            goal="Demonstrate offline autonomous task execution under budget governance",
+            max_llm_calls=5,
+            max_tool_calls=10,
+            max_tokens=20000,
+            max_cost_usd=0.25,
+            max_wall_time_seconds=60,
+            success_criteria=[
+                {
+                    "id": "verify_offline_result",
+                    "verifier": "numeric_range",
+                    "config": {"value": 1, "min": 0},
+                }
+            ],
+            milestones=[
+                {
+                    "id": "demo_milestone",
+                    "done_when": {"verifier": "numeric_range", "config": {"value": 1, "min": 0}},
+                }
+            ],
+            store=store,
+        )
+        receipt = task.run(agent="fake-coding-agent", max_steps=5)
+
     print("\n=== Task Sentry Receipt ===")
     print(f"Task ID:   {receipt.task_id}")
     print(f"Status:    {receipt.status}")
@@ -224,7 +263,22 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
     # demo
-    subparsers.add_parser("demo", help="Run an offline demo task under budget control")
+    p_demo = subparsers.add_parser("demo", help="Run a demo task under budget control")
+    p_demo.add_argument(
+        "--live",
+        action="store_true",
+        help="Run live using local Ollama LLMs and semantic model routing",
+    )
+    p_demo.add_argument(
+        "--routine-model",
+        default="qwen2.5:3b",
+        help="Fast routine lane model (e.g. qwen2.5:3b, llama3.2:1b, gemma2:2b)",
+    )
+    p_demo.add_argument(
+        "--reasoning-model",
+        default="qwen3:4b-instruct-2507-q4_K_M",
+        help="Deep reasoning lane model (e.g. qwen3:4b-instruct-2507-q4_K_M, ornith:latest)",
+    )
 
     # run
     p_run = subparsers.add_parser("run", help="Run a task from a YAML contract")
