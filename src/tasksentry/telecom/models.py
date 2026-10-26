@@ -229,4 +229,6 @@ class TelecomResolutionResult(BaseModel):
     compliance_score: float = 1.0  # Percentage of SOP steps followed accurately
     wall_time_seconds: float = 0.0
     tokens_consumed: int = 0
+    brain_model: str = "telco:latest"
+    llm_analysis: str = ""
     audit_receipt_hash: str = ""

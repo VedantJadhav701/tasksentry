@@ -244,3 +244,37 @@ def test_telecom_batch_runner_and_metrics(tmp_path: Path) -> None:
         data = json.load(f)
     assert "total_tickets" in data
     assert "results" in data
+
+
+def test_telecom_agent_brain_reasoning() -> None:
+    meta = TelecomTicketMetadata.from_instruction(SAMPLE_INSTRUCTION)
+    sop = TelecomSOP(
+        problem_category="Telecom RAN L2 - midhaulfailure",
+        steps=[
+            TelecomStep.parse_raw_action(1, SAMPLE_STEP_1_ACTION),
+            TelecomStep.parse_raw_action(4, SAMPLE_STEP_4_ACTION),
+        ],
+    )
+    ticket = TelecomTicket(
+        id="test_telco_brain",
+        instruction=SAMPLE_INSTRUCTION,
+        metadata=meta,
+        sop=sop,
+    )
+
+    agent = TelecomAgent(
+        brain_model="telco:latest",
+        enable_llm_reasoning=True,
+    )
+    # Mock brain analysis method to test deterministic output without hitting network
+    agent._generate_brain_analysis = (  # type: ignore[assignment]
+        lambda ticket, status, rca_driver, escalation_team: (
+            f"3GPP RAN Analysis: Root cause is {rca_driver}. Disruption on midhaul Xn-AP interface."
+        )
+    )
+
+    res = agent.resolve_ticket(ticket)
+    assert res.brain_model == "telco:latest"
+    assert "3GPP RAN Analysis" in res.llm_analysis
+    assert "midhaulfailure" in res.llm_analysis
+

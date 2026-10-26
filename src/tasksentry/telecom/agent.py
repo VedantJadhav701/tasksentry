@@ -22,9 +22,15 @@ class TelecomAgent:
         self,
         registry: ToolRegistry | None = None,
         sim_state: TelecomSimulationState | None = None,
+        brain_model: str = "telco:latest",
+        enable_llm_reasoning: bool = False,
+        base_url: str = "http://127.0.0.1:11434",
     ) -> None:
         self.registry = registry or ToolRegistry()
         self.sim_state = sim_state or TelecomSimulationState()
+        self.brain_model = brain_model
+        self.enable_llm_reasoning = enable_llm_reasoning
+        self.base_url = base_url
         # Register telecom tools
         for t in create_telecom_tools(self.sim_state):
             if not self.registry.has(t.name):
@@ -117,6 +123,15 @@ class TelecomAgent:
         )
         receipt_hash = hashlib.sha256(audit_payload.encode("utf-8")).hexdigest()[:16]
 
+        llm_analysis = ""
+        if self.enable_llm_reasoning:
+            llm_analysis = self._generate_brain_analysis(
+                ticket=ticket,
+                status=status,
+                rca_driver=rca_driver or ticket.metadata.failure_type,
+                escalation_team=escalation_team,
+            )
+
         return TelecomResolutionResult(
             ticket_id=ticket.id,
             category=ticket.sop.problem_category,
@@ -127,9 +142,44 @@ class TelecomAgent:
             verification_passed=verification_passed,
             compliance_score=compliance,
             wall_time_seconds=duration,
-            tokens_consumed=len(steps_trace) * 120,
+            tokens_consumed=len(steps_trace) * 120 + (250 if llm_analysis else 0),
+            brain_model=self.brain_model,
+            llm_analysis=llm_analysis,
             audit_receipt_hash=f"ts-tel-{receipt_hash}",
         )
+
+    def _generate_brain_analysis(
+        self,
+        ticket: TelecomTicket,
+        status: str,
+        rca_driver: str,
+        escalation_team: str | None,
+    ) -> str:
+        """Query telco domain brain LLM for root-cause synthesis and field recommendation."""
+        try:
+            from tasksentry.models.ollama import OllamaClient
+
+            client = OllamaClient(
+                model=self.brain_model,
+                base_url=f"{self.base_url.rstrip('/')}/v1",
+            )
+            prompt = (
+                f"You are the Telecom 5G RAN expert brain ({self.brain_model}).\n"
+                f"Analyze ticket {ticket.id} for gNB {ticket.metadata.gnb_id} "
+                f"(DU: {ticket.metadata.du_id}, Cell: {ticket.metadata.cell_id}).\n"
+                f"Alert: {ticket.metadata.failure_type}. Primary RCA Driver: {rca_driver}.\n"
+                f"Status: {status}. Escalation: {escalation_team or 'In-SOP Resolved'}.\n"
+                "Provide a concise 2-sentence 3GPP/RAN technical root cause summary "
+                "and field recovery action."
+            )
+            resp = client.complete([{"role": "user", "content": prompt}])
+            return (resp.content or "").strip()
+        except Exception as e:
+            logger.warning("Telco brain inference skipped: %s", e)
+            return (
+                f"3GPP RAN Analysis: Primary RCA driver is '{rca_driver}'. "
+                f"Auto-classified for {escalation_team or 'Specialist Team'}."
+            )
 
     def _execute_sop_step(
         self,

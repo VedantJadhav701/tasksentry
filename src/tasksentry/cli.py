@@ -274,7 +274,13 @@ def cmd_telecom(args: argparse.Namespace) -> int:
         print(f"Error: Dataset file not found at {dataset_path}")
         return 1
 
-    runner = TelecomBatchRunner()
+    model_name = getattr(args, "model", "telco:latest")
+    use_llm = getattr(args, "llm", False)
+    runner = TelecomBatchRunner(
+        dataset_path=dataset_path,
+        brain_model=model_name,
+        enable_llm_reasoning=use_llm,
+    )
 
     if getattr(args, "list_tickets", False):
         cat = getattr(args, "category", None)
@@ -297,16 +303,20 @@ def cmd_telecom(args: argparse.Namespace) -> int:
             print(f"Error: Ticket '{single_ticket_id}' not found in dataset.")
             return 1
 
+        m = target_ticket.metadata
         print("==================================================")
         print(f" TELECOM TICKET RESOLUTION: {target_ticket.id}")
         print("==================================================")
         print(f"Category:      {target_ticket.sop.problem_category}")
-        print(f"Target gNB:    {target_ticket.metadata.gnb_id} (DU: {target_ticket.metadata.du_id})")
-        print(f"Cluster:       {target_ticket.metadata.prefecture} ({target_ticket.metadata.datacenter})")
-        print(f"Failure Alert: {target_ticket.metadata.failure_type} (OperStatus: {target_ticket.metadata.oper_status})")
+        print(f"Target gNB:    {m.gnb_id} (DU: {m.du_id})")
+        print(f"Cluster:       {m.prefecture} ({m.datacenter})")
+        print(f"Failure Alert: {m.failure_type} (OperStatus: {m.oper_status})")
         print("Executing Macro-Graph SOP and automated diagnostics...\n")
 
-        res = runner.run_ticket(target_ticket)
+        res = runner.run_ticket(
+            target_ticket,
+            enable_llm_reasoning=getattr(args, "llm", False),
+        )
         print("Resolution Result:")
         print(f"  * Status:           {res.status.upper()}")
         print(f"  * RCA Driver:       {res.rca_driver}")
@@ -314,6 +324,10 @@ def cmd_telecom(args: argparse.Namespace) -> int:
         print(f"  * SOP Compliance:   {int(res.compliance_score * 100)}%")
         print(f"  * Execution Time:   {res.wall_time_seconds}s")
         print(f"  * Audit Receipt:    {res.audit_receipt_hash}\n")
+
+        if res.llm_analysis:
+            print(f"Telco Brain Reasoning ({res.brain_model}):")
+            print(f"  {res.llm_analysis}\n")
 
         print("Step-by-Step SOP Execution Trace:")
         for s in res.steps_executed:
@@ -436,6 +450,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Dataset file",
     )
     p_tel.add_argument("--output", "-o", default=None, help="Output path for JSON report")
+    p_tel.add_argument("--llm", action="store_true", help="Enable telco brain reasoning")
+    p_tel.add_argument("--model", "-m", default="telco:latest", help="Brain model")
     p_tel.add_argument("--list-tickets", action="store_true", help="List tickets in dataset")
     p_tel.add_argument("--limit", type=int, default=15, help="Limit when listing tickets")
 

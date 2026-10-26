@@ -62,21 +62,34 @@ class TelecomBatchRunner:
         registry: ToolRegistry | None = None,
         dataset_path: str = "ran_5g_logs_resolution_sft_chatml_train.jsonl",
         max_tickets: int | None = None,
+        brain_model: str = "telco:latest",
+        enable_llm_reasoning: bool = False,
     ) -> None:
         self.registry = registry or ToolRegistry()
         self.dataset_path = dataset_path
         self.max_tickets = max_tickets
+        self.brain_model = brain_model
+        self.enable_llm_reasoning = enable_llm_reasoning
 
     def run_ticket(
         self,
         ticket: TelecomTicket,
         sim_state: TelecomSimulationState | None = None,
+        enable_llm_reasoning: bool | None = None,
     ) -> TelecomResolutionResult:
         """Run a single telecom ticket through the governed agent."""
         state = sim_state or TelecomSimulationState.from_ticket_failure_type(
             ticket.metadata.failure_type
         )
-        agent = TelecomAgent(registry=self.registry, sim_state=state)
+        use_llm = (
+            self.enable_llm_reasoning if enable_llm_reasoning is None else enable_llm_reasoning
+        )
+        agent = TelecomAgent(
+            registry=self.registry,
+            sim_state=state,
+            brain_model=self.brain_model,
+            enable_llm_reasoning=use_llm,
+        )
         return agent.execute_ticket(ticket)
 
     def run_batch(
