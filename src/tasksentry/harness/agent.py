@@ -151,6 +151,10 @@ class LLMAgent:
             if role in ("assistant", "user", "system", "tool"):
                 messages.append({"role": role, "content": content})
 
+        # Ensure there is always an active user message so chat-tuned LLMs generate an answer
+        if not any(m.get("role") == "user" for m in messages):
+            messages.append({"role": "user", "content": canonical_state.goal})
+
         try:
             resp = self.model_client.complete(messages, tools=tools_spec if tools_spec else None)
         except Exception as exc:

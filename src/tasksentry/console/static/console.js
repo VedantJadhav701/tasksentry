@@ -161,17 +161,15 @@ class ConsoleApp {
 
       const models = data.available_models || [];
       if (models.length > 0) {
-        // Select smart defaults:
-        // Routine: exact qwen2.5:3b > llama3.2:1b (exact/prefix) > gemma2:2b > models[0]
-        const routineDefault = models.find(m => m === 'qwen2.5:3b')
+        // Select smart defaults (prioritize active verified model beam:cloud if present)
+        const routineDefault = models.find(m => m === 'beam:cloud')
+          || models.find(m => m === 'qwen2.5:3b')
           || models.find(m => m.startsWith('llama3.2:1b'))
-          || models.find(m => m.startsWith('gemma2:2b'))
           || models[0];
 
-        // Reasoning: qwen3:4b-instruct-2507-q4_K_M > ornith:latest > qwen3 prefix > routineDefault
-        const reasoningDefault = models.find(m => m.startsWith('qwen3:4b-instruct'))
+        const reasoningDefault = models.find(m => m === 'beam:cloud')
+          || models.find(m => m.startsWith('qwen3:4b-instruct'))
           || models.find(m => m === 'ornith:latest')
-          || models.find(m => m.startsWith('qwen3:'))
           || routineDefault;
 
         // Initialize iOS Popover Picker for Routine Lane

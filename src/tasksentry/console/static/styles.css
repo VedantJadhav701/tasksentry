@@ -1016,3 +1016,116 @@ select option {
   transform: scale(0.96);
 }
 
+/* macOS Sequoia Window Traffic Lights */
+.macos-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.traffic-light:hover {
+  transform: scale(1.15);
+}
+
+.light-red {
+  background: #FF5F56;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 6px rgba(255, 95, 86, 0.4);
+}
+
+.light-yellow {
+  background: #FFBD2E;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 6px rgba(255, 189, 46, 0.4);
+}
+
+.light-green {
+  background: #27C93F;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 6px rgba(39, 201, 63, 0.4);
+}
+
+/* Rich Content & Markdown Formatting */
+.agent-answer-content {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-top: 6px;
+}
+
+.agent-answer-content strong {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.agent-answer-content p {
+  margin: 6px 0;
+}
+
+.ios-inline-code {
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--ios-glass-stroke);
+  color: var(--ios-blue);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.ios-code-block {
+  background: rgba(18, 18, 22, 0.85);
+  border: 0.5px solid var(--ios-glass-stroke);
+  border-radius: 12px;
+  margin: 10px 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.ios-code-block .code-header {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 0.5px solid var(--ios-glass-stroke-subtle);
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.ios-code-block code {
+  display: block;
+  padding: 12px 14px;
+  color: #E2E8F0;
+  line-height: 1.5;
+}
+
+.ios-math-block {
+  background: rgba(94, 92, 230, 0.1);
+  border: 0.5px solid rgba(94, 92, 230, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: #D8B4FE;
+  text-align: center;
+}
+
+.ios-math-inline {
+  font-family: var(--font-mono);
+  color: #D8B4FE;
+  background: rgba(94, 92, 230, 0.12);
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+

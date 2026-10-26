@@ -1,5 +1,6 @@
 """Task execution engine managing live background agent runs, SSE streaming, and approvals."""
 
+import json
 import logging
 import queue
 import threading
@@ -315,14 +316,24 @@ class ConsoleRunManager:
                     },
                 )
 
-                # Simulated token streaming indicator
-                run.emit("assistant_token", {"step": step, "token": "Evaluating"})
-                run.emit("assistant_token", {"step": step, "token": " next"})
-                run.emit("assistant_token", {"step": step, "token": " action..."})
-
                 # Agent step
                 plan_dict = task.runtime.planner.get_plan().to_dict()
                 action = agent.step(task.runtime.current_state, task.runtime.history, plan_dict)
+
+                # Stream reasoning tokens if available in action answer
+                ans_text = str(action.get("answer") or "")
+                if ans_text:
+                    # Stream tokens in readable chunks
+                    words = ans_text.split(" ")
+                    chunk = []
+                    for w in words:
+                        chunk.append(w)
+                        if len(chunk) >= 6:
+                            token_chunk = " ".join(chunk) + " "
+                            run.emit("assistant_token", {"step": step, "token": token_chunk})
+                            chunk = []
+                    if chunk:
+                        run.emit("assistant_token", {"step": step, "token": " ".join(chunk)})
 
                 run.emit("assistant_message", {"step": step, "action": action})
 
@@ -414,6 +425,21 @@ class ConsoleRunManager:
                             "tool_call_failed",
                             {"tool": tool_name, "error": step_res.observation},
                         )
+
+                    # Update interaction history for multi-step agent reasoning
+                    args_str = json.dumps(tool_args)
+                    task.runtime.history.append(
+                        {
+                            "role": "assistant",
+                            "content": f"Invoked tool {tool_name} with arguments {args_str}",
+                        }
+                    )
+                    task.runtime.history.append(
+                        {
+                            "role": "tool",
+                            "content": step_res.observation,
+                        }
+                    )
 
                 # Budget status check
                 b_usage = task.runtime.budget.usage_summary()

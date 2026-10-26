@@ -50,7 +50,7 @@ class SemanticModelRouter(ModelClient):
         self.routine_model = routine_model
         self.reasoning_model = reasoning_model
         self.base_url = base_url
-        self.fallback_models = fallback_models or ["llama3.2:1b", "gemma2:2b", "beam:cloud"]
+        self.fallback_models = fallback_models or ["beam:cloud", "qwen2.5:3b", "llama3.2:1b"]
         self._clients: dict[str, ModelClient] = clients or {}
 
     def _get_client(self, model_name: str) -> ModelClient:

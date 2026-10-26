@@ -39,9 +39,12 @@ class ChatWindow {
     
     let contentHtml = '';
     if (action.type === 'complete_task') {
+      const formatted = this._formatMarkdown(action.answer || 'Goal satisfied and verified.');
       contentHtml = `
-        <div style="font-weight: 700; color: var(--ios-green); margin-bottom: 6px;">✓ Task Completion Declared</div>
-        <div>${this._escape(action.answer || 'Goal satisfied and verified.')}</div>
+        <div style="font-weight: 700; color: var(--ios-green); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+          <span>✓</span> Task Completion Declared
+        </div>
+        <div class="agent-answer-content">${formatted}</div>
       `;
     } else {
       contentHtml = `<div>${this._escape(JSON.stringify(action))}</div>`;
@@ -136,6 +139,28 @@ class ChatWindow {
       "'": '&#39;',
       '"': '&quot;'
     }[tag] || tag));
+  }
+
+  _formatMarkdown(text) {
+    if (!text) return '';
+    let escaped = this._escape(text);
+    // Code blocks
+    escaped = escaped.replace(/```(\w+)?\n([\s\S]*?)```/g, (m, lang, code) => {
+      return `<pre class="ios-code-block"><div class="code-header">${lang || 'code'}</div><code>${code}</code></pre>`;
+    });
+    // Inline code
+    escaped = escaped.replace(/`([^`]+)`/g, '<code class="ios-inline-code">$1</code>');
+    // Bold
+    escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Math blocks \[ ... \]
+    escaped = escaped.replace(/\\\[([\s\S]*?)\\\]/g, '<div class="ios-math-block">$1</div>');
+    // Inline math \( ... \)
+    escaped = escaped.replace(/\\\(([\s\S]*?)\\\)/g, '<span class="ios-math-inline">$1</span>');
+    // Paragraphs and breaks
+    escaped = escaped.replace(/\n\n/g, '<div style="height: 8px;"></div>').replace(/\n/g, '<br>');
+    return escaped;
   }
 }
 window.ChatWindow = ChatWindow;

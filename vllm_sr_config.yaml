@@ -1,0 +1,42 @@
+version: v0.3
+
+listeners:
+  - name: "http-8899"
+    address: "127.0.0.1"
+    port: 8899
+    timeout: "300s"
+
+providers:
+  defaults:
+    model: "beam:cloud"
+  models:
+    - name: "beam:cloud"
+      backend_refs:
+        - name: "ollama-beam"
+          provider: ollama
+          endpoint: "127.0.0.1:11434"
+          protocol: "http"
+          weight: 100
+    - name: "qwen2.5:3b"
+      backend_refs:
+        - name: "ollama-qwen"
+          provider: ollama
+          endpoint: "127.0.0.1:11434"
+          protocol: "http"
+          weight: 100
+
+routing:
+  modelCards:
+    - name: "beam:cloud"
+    - name: "qwen2.5:3b"
+
+  decisions:
+    - name: "default-route"
+      description: "Catch-all route for requests"
+      priority: 100
+      rules:
+        operator: "AND"
+        conditions: []
+      modelRefs:
+        - model: "beam:cloud"
+          use_reasoning: false
