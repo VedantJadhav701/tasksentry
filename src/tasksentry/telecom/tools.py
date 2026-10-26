@@ -142,18 +142,21 @@ class TelecomSimulationState:
                 host_reachable=True,
                 oru_timing_locked=False,
                 cell_active=False,
+                f1c_connected=True,
                 first_alarm="notifAniTimingUnlocked",
             )
         if "fronthaul" in ft:
             return cls(
                 host_reachable=True,
                 cell_active=False,
+                f1c_connected=True,
                 first_alarm="notifAniRuConnectivityFailure",
             )
         if "admin" in ft or "lock" in ft:
             return cls(
                 host_reachable=True,
                 cell_active=False,
+                f1c_connected=True,
                 admin_state="LOCKED",
                 first_alarm="mgmtoperation",
             )

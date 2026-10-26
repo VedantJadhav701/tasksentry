@@ -80,7 +80,8 @@ class TelecomAgent:
 
             # Dispatch tool call based on step requirements
             node_res = self._execute_sop_step(step_num, step_def, ticket)
-            sop_steps_correct += 1
+            if step_num in (1, 2, 3, 4, 5, 6) and step_def is not None:
+                sop_steps_correct += 1
 
             trace_record = StepExecutionRecord(
                 step_number=step_num,

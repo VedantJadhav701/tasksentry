@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TaskSentry Console</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+<header class="nav glass">
+  <div class="brand"><span class="logo">T</span><div><b>TaskSentry</b><small>Universal Harness Console</small></div></div>
+  <div class="seg" id="seg">
+    <button data-tab="onboard" class="on">Onboard</button>
+    <button data-tab="live">Live Run</button>
+    <button data-tab="spec">Harness</button>
+  </div>
+  <span class="pill" id="conn">offline</span>
+</header>
+
+<main>
+  <!-- ONBOARD -->
+  <section id="tab-onboard" class="tab on">
+    <div class="grid2">
+      <div class="card glass">
+        <h2>1 · Upload one record</h2>
+        <p class="sub">Paste a single JSON / JSONL / ChatML record from any domain. The system recognizes the format and builds a working harness.</p>
+        <textarea id="record" spellcheck="false" placeholder='{"id": "...", "instruction": "...", "output": {...}}'></textarea>
+        <div class="row">
+          <button class="btn ghost" id="loadSample">Load sample telecom ticket</button>
+          <label class="file btn ghost">Choose file<input type="file" id="file" accept=".json,.jsonl,.txt"></label>
+        </div>
+        <div class="opts">
+          <label class="switch"><input type="checkbox" id="useLlm"><span></span> Use cloud model</label>
+          <input id="model" value="beam:cloud" aria-label="model name">
+        </div>
+        <div class="opts">
+          <label>Sensor noise <b id="noiseV">0%</b></label>
+          <input type="range" id="noise" min="0" max="20" value="0">
+        </div>
+        <div class="opts">
+          <label class="switch"><input type="checkbox" id="approve"><span></span> Pre-approve high-risk actions</label>
+        </div>
+        <div class="row">
+          <button class="btn" id="analyze">Recognize &amp; build</button>
+          <button class="btn primary" id="runBtn">Run harness</button>
+        </div>
+        <div id="err" class="err"></div>
+      </div>
+      <div class="card glass" id="recog">
+        <h2>2 · Recognition</h2>
+        <p class="sub" id="recogEmpty">Nothing analyzed yet.</p>
+        <div id="recogBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE -->
+  <section id="tab-live" class="tab">
+    <div class="grid2 wide">
+      <div class="card glass">
+        <div class="cardhead"><h2>Live SOP graph</h2><span class="pill" id="status">idle</span></div>
+        <div id="graphWrap"><svg id="graph" viewBox="0 0 760 420" role="img" aria-label="SOP graph"></svg></div>
+        <div class="legend"><i class="d pend"></i>pending <i class="d run"></i>running <i class="d bad"></i>abnormal <i class="d ok"></i>normal <i class="d skip"></i>skipped (low info gain)</div>
+      </div>
+      <div class="stack">
+        <div class="card glass"><h2>Posterior</h2><div id="post"></div></div>
+        <div class="card glass"><h2>Terminal</h2><pre id="term" class="term"></pre></div>
+      </div>
+    </div>
+    <div class="card glass" id="resultCard" hidden></div>
+  </section>
+
+  <!-- SPEC -->
+  <section id="tab-spec" class="tab">
+    <div class="card glass"><h2>Generated harness</h2><div id="specBody"><p class="sub">Run “Recognize &amp; build” first.</p></div></div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
