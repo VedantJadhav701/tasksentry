@@ -14,6 +14,8 @@ from typing import Any
 
 from tasksentry.math.bayes_rca import Probe
 
+VALID_RISK_TIERS = frozenset({"read", "reversible_write", "system_write", "irreversible_write"})
+
 
 @dataclass(frozen=True)
 class Remediation:
@@ -24,6 +26,13 @@ class Remediation:
     benefit: float = 100.0
     harm: float = 20.0
     cost: float = 1.0
+
+    def __post_init__(self) -> None:
+        if self.risk not in VALID_RISK_TIERS:
+            raise ValueError(
+                f"unknown remediation risk {self.risk!r}; "
+                f"expected one of {sorted(VALID_RISK_TIERS)}"
+            )
 
 
 @dataclass

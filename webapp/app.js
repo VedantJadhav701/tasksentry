@@ -15,7 +15,8 @@ $("#file").onchange = async (e) => { const f = e.target.files[0]; if (f) $("#rec
 
 function payload() {
   return { record: $("#record").value, use_llm: $("#useLlm").checked, model: $("#model").value || "beam:cloud",
-           flip_prob: +$("#noise").value / 100, approve_high_risk: $("#approve").checked };
+           flip_prob: +$("#noise").value / 100, approve_high_risk: $("#approve").checked,
+           execution_mode: $("#mode").value, backend_id: $("#backend").value.trim() || null };
 }
 async function post(url) {
   $("#err").textContent = "";
@@ -33,6 +34,7 @@ $("#runBtn").onclick = async () => {
 function render(j) {
   spec = j.spec; graph = j.graph;
   const p = j.profile;
+  $("#runMeta").textContent = `${j.execution_mode || "simulation"} · backend ${j.backend_id || "simulated"} · ${j.simulated ? "dry-run evidence" : "live backend evidence"}`;
   $("#recogEmpty").hidden = true;
   const conf = Math.round(p.confidence * 100);
   $("#recogBody").innerHTML = `
@@ -144,7 +146,7 @@ async function replay(j) {
     <b>Remediation</b><span>${esc(r.remediation ? r.remediation.name + " (" + r.remediation.risk + ")" : "none")}</span>
     <b>Approval</b><span>${esc(r.approval)}</span>
     <b>Escalation</b><span>${esc(r.escalation_team || "—")} ${r.escalation_reason ? "· " + esc(r.escalation_reason) : ""}</span>
-    <b>Audit chain</b><span>${r.chain_length} entries · ${r.chain_valid ? "valid ✓" : "INVALID"} · root ${esc(r.chain_root.slice(0, 20))}…</span></div>`;
+     <b>Audit chain</b><span>${r.chain_length} entries · ${r.chain_valid ? "valid ✓" : "INVALID"} · ${r.chain_signed ? "HMAC signed" : "integrity only"} · root ${esc(r.chain_root.slice(0, 20))}…</span></div>`;
 }
 
 fetch("/api/onboard/health").then((r) => r.ok && ($("#conn").textContent = "online", $("#conn").className = "pill ok")).catch(() => {});

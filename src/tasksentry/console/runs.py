@@ -375,6 +375,7 @@ class ConsoleRunManager:
                     tool_args = action.get("arguments", {})
                     target_tool = registry.get(tool_name)
                     tool_risk = target_tool.risk if target_tool else "read"
+                    approved_write = False
 
                     # Human Approval Gate for unsafe writes
                     is_write_risk = tool_risk in (
@@ -427,11 +428,19 @@ class ConsoleRunManager:
                             )
                             step += 1
                             continue
+                        approved_write = True
+                    elif is_write_risk:
+                        # Explicitly mark pre-authorized writes for the central
+                        # governor; otherwise its default safety policy blocks
+                        # the action even after the console decision.
+                        approved_write = True
 
                     # Execute Tool Call
                     run.emit("tool_call_started", {"tool": tool_name, "arguments": tool_args})
                     step_res, new_state = task.runtime.executor.execute_step(
-                        action, task.runtime.current_state
+                        action,
+                        task.runtime.current_state,
+                        approved_write=approved_write,
                     )
                     task.runtime.current_state = new_state
 

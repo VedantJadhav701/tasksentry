@@ -57,6 +57,9 @@ from tasksentry.exceptions import (
 from tasksentry.harness import (
     ActionGate,
     Agent,
+    BackendRegistry,
+    CallableBackend,
+    DomainBackend,
     Executor,
     FakeCodingAgent,
     LLMAgent,
@@ -70,6 +73,7 @@ from tasksentry.harness import (
     StopConditionVerdict,
     VerificationGate,
     VerificationResult,
+    default_backend_registry,
 )
 from tasksentry.math import (
     APGWeights,
@@ -129,6 +133,7 @@ __all__ = [
     "AgentDefinition",
     "AgentRegistry",
     "AgentTask",
+    "BackendRegistry",
     "Budget",
     "BudgetContext",
     "BudgetError",
@@ -136,10 +141,12 @@ __all__ = [
     "BudgetLimits",
     "BudgetPolicy",
     "CASERuntime",
+    "CallableBackend",
     "CanonicalState",
     "ConfigurationError",
     "ContractError",
     "CostEstimate",
+    "DomainBackend",
     "Event",
     "EventType",
     "Executor",
@@ -200,6 +207,7 @@ __all__ = [
     "calculate_cost",
     "canonical_state_hash",
     "check_ollama_health",
+    "default_backend_registry",
     "get_current_budget",
     "tool",
 ]

@@ -16,11 +16,13 @@ router = APIRouter(prefix="/api/onboard", tags=["Onboarding"])
 class OnboardRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     record: str
-    use_llm: bool = False
+    use_llm: bool = True
     model: str = "beam:cloud"
     truth: str | None = None
     flip_prob: float = 0.0
     approve_high_risk: bool = False
+    execution_mode: str = "simulation"
+    backend_id: str | None = None
 
 
 def _llm(req: OnboardRequest) -> Any:
@@ -44,6 +46,16 @@ def run(req: OnboardRequest) -> dict[str, Any]:
             truth=req.truth,
             flip_prob=req.flip_prob,
             approve_high_risk=req.approve_high_risk,
+            execution_mode=req.execution_mode,
+            backend_id=req.backend_id,
         )
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/backends")
+def list_backends() -> dict[str, Any]:
+    """List explicitly registered live backends without exposing credentials."""
+    from tasksentry.harness.backend import default_backend_registry
+
+    return {"backends": default_backend_registry.names()}

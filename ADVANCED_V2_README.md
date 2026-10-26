@@ -66,7 +66,7 @@ returns hypothesis probabilities; they are pooled with the Bayesian posterior, a
 `tasksentry/onboarding/`
 - `infer.py` recognizes the record format (JSON / JSONL / ChatML, steps found anywhere in the record), pulls entities (gnb_id, du_id, data center...), the failure label, and each step's commands, PASS/FAIL expectations, subissue, actions, escalation, and "X to Y" failure mappings. If recognition confidence is low and an LLM is supplied, the LLM proposes a field mapping that is **validated against the record** before use.
 - `synth.py` turns the profile into a `HarnessSpec`: root-cause hypotheses, one probe per SOP step (step 5 splits into 4 probes from its mapping clause), remediations with risk tiers, documented escalations, and priors boosted from the label hint. Sensitivities are heuristic (0.92 / 0.04). Optional LLM refinement (Ollama `beam:cloud`) can adjust sensitivities and can only **raise** a remediation's risk tier, never lower it. If the cloud model is unreachable, the deterministic spec is used and a note is recorded.
-- `pipeline.py`: `analyze(record)` and `run(record)`; `run` executes the governed engine on a **simulated backend** (clearly labelled in the UI). To go live, replace `SimulatedBackend` with callables that hit your real systems.
+- `pipeline.py`: `analyze(record)` and `run(record)`; simulation is the safe preview default, while `run(..., execution_mode="live", backend_id="...")` uses an explicitly registered `DomainBackend` with customer-owned probes, remediations, and verification.
 - `api.py`: `POST /api/onboard/analyze`, `POST /api/onboard/run` (include the router in your FastAPI app).
 
 ## Web console (iOS style, live SOP graph)
@@ -80,5 +80,5 @@ PYTHONPATH=. python -m uvicorn webapp.server:app --port 8080
 Tabs: **Onboard** (paste/upload a record, pick `beam:cloud`, sensor noise, pre-approval), **Live Run** (animated SOP graph: nodes light up red/green as probes run, numbered in execution order, unused steps dim as "skipped (low info gain)"; live posterior bars; terminal stream; signed-audit result card), **Harness** (generated hypotheses, probes, remediations, notes).
 The run is computed server-side and then replayed with animation, so the graph shows the real execution order and posterior after every probe.
 
-Cloud model: start Ollama locally with access to `beam:cloud` (set `OLLAMA_HOST` if not on 127.0.0.1:11434). I could not call beam:cloud from here, so LLM paths were tested with stub models only.
+Cloud model: start Ollama locally with access to `beam:cloud` (set `OLLAMA_HOST` and, when required, `OLLAMA_API_KEY`). The model is advisory for recognition/refinement; deterministic validation and risk policy remain authoritative.
 The UI was syntax-checked and its API exercised, but not visually checked in a browser, so expect some CSS polish.

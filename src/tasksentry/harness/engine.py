@@ -49,6 +49,7 @@ class EngineResult:
     escalation_reason: str | None = None
     chain_root: str = ""
     chain_valid: bool = False
+    chain_signed: bool = False
     chain_length: int = 0
     wall_time_seconds: float = 0.0
     events: list[dict[str, Any]] = field(default_factory=list)
@@ -160,7 +161,10 @@ class RemediationAgent:
             self.chain.append({"event": "approval", "action": rem.name, "result": approval})
             if not ok:
                 return None, approval, f"approval required: {gate.reason}"
-        result = rem.run()
+        try:
+            result = rem.run()
+        except Exception as exc:
+            result = {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
         self.chain.append({"event": "remediation", "action": rem.name, "result": str(result)[:200]})
         return (
             {
@@ -168,6 +172,7 @@ class RemediationAgent:
                 "risk": rem.risk,
                 "gate": gate.reason,
                 "expected_utility": round(gate.expected_utility, 4),
+                "result": result,
             },
             approval,
             None,
@@ -201,13 +206,15 @@ class UniversalEngine:
         max_probes: int = 10,
         conformal: SplitConformal | None = None,
         approver: Approver | None = None,
-        signing_key: bytes | None = b"change-me",
+        signing_key: bytes | None = None,
         brain: Brain | None = None,
         brain_weight: float = 0.3,
+        max_remediation_retries: int = 1,
     ) -> None:
         self.pack, self.tau, self.max_probes = pack, tau, max_probes
         self.conformal, self.approver, self.signing_key = conformal, approver, signing_key
         self.brain, self.brain_weight = brain, brain_weight
+        self.max_remediation_retries = max(0, max_remediation_retries)
 
     def solve(self) -> EngineResult:
         t0 = time.perf_counter()
@@ -222,15 +229,33 @@ class UniversalEngine:
             self.brain,
             self.brain_weight,
         ).run()
-        rem_rec, approval, reason = RemediationAgent(self.pack, chain, self.approver).act(diag)
+        rem_agent = RemediationAgent(self.pack, chain, self.approver)
+        rem_rec: dict[str, Any] | None = None
+        approval = "not_needed"
+        reason: str | None = None
         verification = None
         status = "escalated"
-        if rem_rec is not None:
+        attempts = 0
+        while attempts <= self.max_remediation_retries:
+            rem_rec, approval, reason = rem_agent.act(diag)
+            if rem_rec is None:
+                break
+            attempts += 1
             verification = VerificationAuditor(self.pack, chain).verify()
             if verification["healthy"]:
                 status = "resolved"
-            else:
-                reason = "remediation applied but verification failed"
+                break
+            if attempts <= self.max_remediation_retries and rem_rec["risk"] == "reversible_write":
+                chain.append(
+                    {
+                        "event": "remediation_retry",
+                        "action": rem_rec["name"],
+                        "attempt": attempts + 1,
+                    }
+                )
+                continue
+            reason = "remediation applied but verification failed"
+            break
         team = None
         if status == "escalated":
             team = self.pack.escalation.get(diag.hypothesis, self.pack.default_escalation)
@@ -246,6 +271,7 @@ class UniversalEngine:
             escalation_reason=reason if status == "escalated" else None,
             chain_root=chain.root(),
             chain_valid=chain.verify(),
+            chain_signed=self.signing_key is not None,
             chain_length=len(chain.entries),
             events=[e.payload for e in chain.entries],
             wall_time_seconds=round(time.perf_counter() - t0, 4),

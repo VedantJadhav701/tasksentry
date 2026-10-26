@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from tasksentry.harness.backend import DomainBackend
 from tasksentry.harness.domain import DomainPack, Remediation
 from tasksentry.math.bayes_rca import Probe
 from tasksentry.onboarding.infer import RecordProfile, extract_json
@@ -199,6 +200,7 @@ class SimulatedBackend:
         rng: random.Random | None = None,
     ) -> None:
         self.spec, self.truth, self.flip_prob = spec, truth, flip_prob
+        self.name = "simulated"
         self.rng = rng or random.Random(0)
         self.healed = False
         self.log: list[str] = []
@@ -217,23 +219,31 @@ class SimulatedBackend:
 
         return run
 
+    def remediate(self, hypothesis: str, action: str) -> dict[str, Any]:
+        """Expose the same action boundary as a live customer backend."""
+        del action
+        return self.fix(hypothesis)()
+
     def verify(self) -> bool:
         return self.healed
 
 
-def build_pack(spec: HarnessSpec, backend: SimulatedBackend) -> DomainPack:
-    rems = {
-        r.hypothesis: Remediation(
+def build_pack(spec: HarnessSpec, backend: DomainBackend) -> DomainPack:
+    rems: dict[str, Remediation] = {}
+    for r in spec.remediations:
+
+        def run_action(hypothesis: str = r.hypothesis, action: str = r.name) -> dict[str, Any]:
+            return backend.remediate(hypothesis, action)
+
+        rems[r.hypothesis] = Remediation(
             r.name,
             r.risk,
-            backend.fix(r.hypothesis),
+            run_action,
             success_prob=0.85 if r.risk == "reversible_write" else 0.8,
             benefit=100.0,
             harm=15.0 if r.risk == "reversible_write" else 80.0,
             cost=1.0 if r.risk == "reversible_write" else 5.0,
         )
-        for r in spec.remediations
-    }
     return DomainPack(
         name=spec.domain,
         priors=spec.priors,

@@ -258,6 +258,19 @@ Visit `http://127.0.0.1:8321` in your browser.
 
 See [docs/console.md](docs/console.md) for full console documentation.
 
+## Universal Harness Onboarding
+
+Upload one representative customer record through the web console to infer its
+format, entities, SOP steps, root-cause hypotheses, probes, remediation policy,
+escalation routes, and live visual graph. The optional Ollama model defaults to
+`beam:cloud` for recognition and advisory RCA; deterministic parsing and risk
+gates remain authoritative.
+
+Simulation is the safe preview mode. Production execution requires a customer
+registered `DomainBackend`, `execution_mode="live"`, and
+`TASKSENTRY_AUDIT_KEY` for signed receipts. See [docs/production.md](docs/production.md)
+and [examples/live_backend.py](examples/live_backend.py).
+
 ---
 
 ## Local Dashboard

@@ -133,8 +133,35 @@ class ToolGovernor:
                 }
 
         # 5. Risk classification check
-        risk_levels = {"read": 0.1, "write": 0.5, "destructive": 1.0, "network": 0.4}
-        numeric_risk = risk_levels.get(tool.risk.lower(), 0.5)
+        # Keep the domain-specific names used by telecom and other operations
+        # packs in the same policy path as the legacy generic names.  A risk
+        # label that is unknown must never silently become a permitted write.
+        risk_levels = {
+            "read": 0.1,
+            "network": 0.4,
+            "write": 0.5,
+            "reversible_write": 0.5,
+            "destructive": 1.0,
+            "system_write": 1.0,
+            "irreversible_write": 1.0,
+        }
+        write_risks = {
+            "write",
+            "reversible_write",
+            "destructive",
+            "system_write",
+            "irreversible_write",
+        }
+        risk_name = tool.risk.lower()
+        if risk_name not in risk_levels:
+            msg = f"Tool {tool_name!r} has unknown risk class {tool.risk!r}."
+            self._emit(TOOL_ERROR, msg, {"tool": tool_name, "risk": tool.risk})
+            return {
+                "status": "blocked",
+                "reason": "unknown_risk_class",
+                "message": msg,
+            }
+        numeric_risk = risk_levels[risk_name]
         if numeric_risk > self.safety.max_risk:
             msg = (
                 f"Tool {tool_name!r} risk {tool.risk!r} ({numeric_risk}) "
@@ -148,10 +175,7 @@ class ToolGovernor:
             }
 
         # 6. Write safety policy
-        if (
-            tool.risk.lower() in ("write", "destructive")
-            and self.safety.require_approval_for_writes
-        ):
+        if risk_name in write_risks and self.safety.require_approval_for_writes:
             has_approval = approved_write or (
                 self.write_approval_callback is not None
                 and self.write_approval_callback(tool_name, valid_args)

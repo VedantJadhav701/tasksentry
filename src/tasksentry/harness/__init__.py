@@ -38,3 +38,16 @@ __all__ = [
     "compute_backoff",
     "evaluate_stop_conditions",
 ]
+from tasksentry.harness.backend import (
+    BackendRegistry,
+    CallableBackend,
+    DomainBackend,
+    default_backend_registry,
+)
+
+__all__ += [
+    "BackendRegistry",
+    "CallableBackend",
+    "DomainBackend",
+    "default_backend_registry",
+]

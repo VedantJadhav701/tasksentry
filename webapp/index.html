@@ -20,6 +20,14 @@
 </header>
 
 <main>
+  <section class="hero glass">
+    <div>
+      <span class="eyebrow">AUTONOMOUS OPERATIONS CONTROL PLANE</span>
+      <h1>From one customer record to a governed harness.</h1>
+      <p class="sub">Recognize the domain, generate the diagnostic graph, gate remediation by risk, and verify the post-state.</p>
+    </div>
+    <div class="hero-stats"><span><b>01</b><small>record</small></span><span><b>∞</b><small>domains</small></span><span><b>0</b><small>unverified fixes</small></span></div>
+  </section>
   <!-- ONBOARD -->
   <section id="tab-onboard" class="tab on">
     <div class="grid2">
@@ -32,8 +40,12 @@
           <label class="file btn ghost">Choose file<input type="file" id="file" accept=".json,.jsonl,.txt"></label>
         </div>
         <div class="opts">
-          <label class="switch"><input type="checkbox" id="useLlm"><span></span> Use cloud model</label>
+          <label class="switch"><input type="checkbox" id="useLlm" checked><span></span> Use beam:cloud recognition</label>
           <input id="model" value="beam:cloud" aria-label="model name">
+        </div>
+        <div class="control-grid">
+          <label>Execution mode<select id="mode"><option value="simulation">Simulation preview</option><option value="live">Live governed backend</option></select></label>
+          <label>Backend ID<input id="backend" placeholder="registered-backend" aria-label="backend id"></label>
         </div>
         <div class="opts">
           <label>Sensor noise <b id="noiseV">0%</b></label>
@@ -44,7 +56,7 @@
         </div>
         <div class="row">
           <button class="btn" id="analyze">Recognize &amp; build</button>
-          <button class="btn primary" id="runBtn">Run harness</button>
+          <button class="btn primary" id="runBtn">Run governed harness</button>
         </div>
         <div id="err" class="err"></div>
       </div>
@@ -52,6 +64,7 @@
         <h2>2 · Recognition</h2>
         <p class="sub" id="recogEmpty">Nothing analyzed yet.</p>
         <div id="recogBody"></div>
+        <div class="trust-note"><span class="dot"></span><span>Live mode requires an explicitly registered backend.</span></div>
       </div>
     </div>
   </section>
@@ -61,6 +74,7 @@
     <div class="grid2 wide">
       <div class="card glass">
         <div class="cardhead"><h2>Live SOP graph</h2><span class="pill" id="status">idle</span></div>
+        <div id="runMeta" class="run-meta">Waiting for a governed run.</div>
         <div id="graphWrap"><svg id="graph" viewBox="0 0 760 420" role="img" aria-label="SOP graph"></svg></div>
         <div class="legend"><i class="d pend"></i>pending <i class="d run"></i>running <i class="d bad"></i>abnormal <i class="d ok"></i>normal <i class="d skip"></i>skipped (low info gain)</div>
       </div>
