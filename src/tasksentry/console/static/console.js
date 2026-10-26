@@ -6,11 +6,13 @@ class ConsoleApp {
     this.chatController = new ChatController();
     this.timeline = new RunTimeline('timeline-inspector-body');
     this.healthPanel = new ModelHealthPanel('model-health-container');
+    this.telecomTickets = [];
 
     this._bindTabs();
     this.loadRecentTasks();
     this.loadModelsHealth();
     this._bindPlayground();
+    this._bindTelecom();
     this._bindGlobalDropdownDismissal();
   }
 
@@ -60,15 +62,20 @@ class ConsoleApp {
 
   switchView(view) {
     const chatContainer = document.getElementById('chat-view-container');
+    const telecomContainer = document.getElementById('telecom-view-container');
     const playgroundContainer = document.getElementById('playground-view-container');
     const healthContainer = document.getElementById('health-view-container');
 
     if (chatContainer) chatContainer.style.display = view === 'chat' ? 'flex' : 'none';
+    if (telecomContainer) telecomContainer.style.display = view === 'telecom' ? 'flex' : 'none';
     if (playgroundContainer) playgroundContainer.style.display = view === 'playground' ? 'flex' : 'none';
     if (healthContainer) healthContainer.style.display = view === 'models' ? 'block' : 'none';
 
     if (view === 'models') {
       this.loadModelsHealth();
+    }
+    if (view === 'telecom') {
+      this.loadTelecomTickets();
     }
   }
 
@@ -326,6 +333,157 @@ class ConsoleApp {
         </div>
       </div>
     `;
+  }
+
+  _bindTelecom() {
+    const runBtn = document.getElementById('btn-run-telecom');
+    const selectEl = document.getElementById('telecom-ticket-select');
+    const inputEl = document.getElementById('telecom-ticket-id-input');
+
+    selectEl?.addEventListener('change', () => {
+      if (inputEl) inputEl.value = selectEl.value;
+      this._updateTargetInfo(selectEl.value);
+    });
+
+    inputEl?.addEventListener('input', () => {
+      this._updateTargetInfo(inputEl.value.trim());
+    });
+
+    runBtn?.addEventListener('click', () => {
+      const ticketId = inputEl?.value.trim() || selectEl?.value;
+      if (ticketId) {
+        this.runTelecomDiagnosis(ticketId);
+      }
+    });
+  }
+
+  async loadTelecomTickets() {
+    const selectEl = document.getElementById('telecom-ticket-select');
+    if (!selectEl) return;
+    try {
+      const res = await fetch('/api/chat/telecom/tickets?limit=25');
+      const data = await res.json();
+      this.telecomTickets = data.tickets || [];
+      if (this.telecomTickets.length > 0) {
+        selectEl.innerHTML = this.telecomTickets.map(t =>
+          `<option value="${t.id}">${t.id} - ${t.category} [${t.cluster}]</option>`
+        ).join('');
+        this._updateTargetInfo(this.telecomTickets[0].id);
+      }
+    } catch (e) {
+      console.error('Failed to load telecom tickets', e);
+    }
+  }
+
+  _updateTargetInfo(ticketId) {
+    const targetInfoEl = document.getElementById('telecom-target-info');
+    if (!targetInfoEl || !this.telecomTickets) return;
+    const ticket = this.telecomTickets.find(t => t.id === ticketId);
+    if (ticket) {
+      targetInfoEl.innerHTML = `
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <span>Target gNB: <b style="color: var(--accent-primary);">${ticket.gnb_id}</b> (DU: ${ticket.du_id}, Cell: ${ticket.cell_id})</span>
+          <span>Cluster: <b>${ticket.cluster}</b> (${ticket.datacenter})</span>
+          <span>Alert: <b style="color: #f87171;">${ticket.failure_type}</b> (OperStatus: ${ticket.oper_status})</span>
+        </div>
+      `;
+    }
+  }
+
+  async runTelecomDiagnosis(ticketId) {
+    const runBtn = document.getElementById('btn-run-telecom');
+    const resultsSec = document.getElementById('telecom-results-section');
+    const brainText = document.getElementById('telecom-brain-analysis-text');
+    const receiptBadge = document.getElementById('telecom-receipt-badge');
+    const outcomeGrid = document.getElementById('telecom-outcome-grid');
+    const stepsCont = document.getElementById('telecom-steps-container');
+
+    if (runBtn) {
+      runBtn.disabled = true;
+      runBtn.innerHTML = '⏳ Reasoning with telco:latest...';
+    }
+
+    if (resultsSec) resultsSec.style.display = 'flex';
+    if (brainText) brainText.textContent = 'Executing Macro-Graph diagnostics and querying telco:latest...';
+
+    try {
+      const res = await fetch('/api/chat/telecom/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticket_id: ticketId,
+          brain_model: 'telco:latest',
+          enable_llm: true
+        })
+      });
+      const data = await res.json();
+
+      if (runBtn) {
+        runBtn.disabled = false;
+        runBtn.innerHTML = '⚡ Execute Ticket SOP';
+      }
+
+      if (!res.ok) {
+        if (brainText) brainText.textContent = 'Error: ' + (data.detail || 'Failed to solve ticket.');
+        return;
+      }
+
+      // 1. Render Outcome Grid
+      const statusColor = data.status === 'resolved' ? '#10b981' : '#f59e0b';
+      if (outcomeGrid) {
+        outcomeGrid.innerHTML = `
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Status</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: ${statusColor}; text-transform: uppercase;">${data.status}</div>
+          </div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">RCA Driver</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #ef4444;">${data.rca_driver || 'N/A'}</div>
+          </div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Escalation Target</div>
+            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">${data.escalation_team || 'In-SOP Resolved'}</div>
+          </div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">SOP Compliance</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-primary);">${Math.round(data.compliance_score * 100)}%</div>
+          </div>
+        `;
+      }
+
+      // 2. Render Brain Analysis & Receipt
+      if (receiptBadge) receiptBadge.textContent = data.audit_receipt_hash || 'ts-tel-verified';
+      if (brainText) brainText.textContent = data.llm_analysis || 'Automated SOP diagnostic sequence completed.';
+
+      // 3. Render Step-by-Step Execution Trace
+      if (stepsCont) {
+        stepsCont.innerHTML = (data.steps_executed || []).map(s => {
+          const pass = s.status === 'PASS';
+          const badgeBg = pass ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+          const badgeCol = pass ? '#10b981' : '#f87171';
+          return `
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-weight: 600; font-size: 0.88rem;">Step ${s.step_number}: ${s.title}</span>
+                <span style="background: ${badgeBg}; color: ${badgeCol}; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px;">${s.status}</span>
+              </div>
+              <div style="font-family: monospace; font-size: 0.78rem; background: var(--bg-elevated); padding: 6px 10px; border-radius: 6px; color: var(--text-secondary); word-break: break-all;">
+                ${s.command_executed}
+              </div>
+              ${s.subissue_detected ? `<div style="margin-top: 6px; font-size: 0.8rem; color: #f87171;"><b>Subissue:</b> ${s.subissue_detected}</div>` : ''}
+              ${s.escalate_to ? `<div style="margin-top: 2px; font-size: 0.8rem; color: #fbbf24;"><b>Escalated to:</b> ${s.escalate_to}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+
+    } catch (err) {
+      if (runBtn) {
+        runBtn.disabled = false;
+        runBtn.innerHTML = '⚡ Execute Ticket SOP';
+      }
+      if (brainText) brainText.textContent = 'Network or inference error: ' + err.message;
+    }
   }
 }
 

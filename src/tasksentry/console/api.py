@@ -199,13 +199,23 @@ def get_models_health(base_url: str = "http://127.0.0.1:11434/v1") -> dict[str, 
     health = check_ollama_health(base_url=base_url)
     models_meta = []
     for mod in health.get("available_models", []):
+        is_telco = "telco" in mod
         is_reasoning = any(r in mod for r in ["qwen3", "ornith", "beam", "deepseek"])
-        rec_for = "planning & failure recovery" if is_reasoning else "routine tool execution"
+        if is_telco:
+            lane = "telecom-brain"
+            rec_for = "5G RAN SOP & 3GPP root-cause diagnosis"
+        elif is_reasoning:
+            lane = "reasoning"
+            rec_for = "planning & failure recovery"
+        else:
+            lane = "routine"
+            rec_for = "routine tool execution"
+
         models_meta.append(
             {
                 "name": mod,
-                "lane": "reasoning" if is_reasoning else "routine",
-                "context_window": 4096 if "qwen3" in mod else 8192,
+                "lane": lane,
+                "context_window": 4096 if ("qwen3" in mod or is_telco) else 8192,
                 "recommended_for": rec_for,
             }
         )
@@ -218,6 +228,7 @@ def get_models_health(base_url: str = "http://127.0.0.1:11434/v1") -> dict[str, 
         "models_metadata": models_meta,
         "default_routine_model": "qwen2.5:3b",
         "default_reasoning_model": "qwen3:4b-instruct-2507-q4_K_M",
+        "default_telecom_model": "telco:latest",
     }
 
 
@@ -243,3 +254,59 @@ def compare_router_lanes(req: PlaygroundCompareRequest) -> dict[str, Any]:
         reasoning_model=req.reasoning_model,
     )
     return result
+
+
+class TelecomSolveRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    ticket_id: str
+    brain_model: str = "telco:latest"
+    enable_llm: bool = True
+
+
+@router.get("/telecom/tickets")
+def list_telecom_tickets(limit: int = 15) -> dict[str, Any]:
+    """Retrieve sample 5G RAN tickets from dataset."""
+    from tasksentry.telecom.loader import load_tickets
+
+    try:
+        tickets = load_tickets(limit=limit)
+        return {
+            "count": len(tickets),
+            "tickets": [
+                {
+                    "id": t.id,
+                    "category": t.sop.problem_category,
+                    "gnb_id": t.metadata.gnb_id,
+                    "du_id": t.metadata.du_id,
+                    "cell_id": t.metadata.cell_id,
+                    "cluster": t.metadata.prefecture,
+                    "datacenter": t.metadata.datacenter,
+                    "failure_type": t.metadata.failure_type,
+                    "oper_status": t.metadata.oper_status,
+                }
+                for t in tickets
+            ],
+        }
+    except Exception as exc:
+        return {"count": 0, "tickets": [], "error": str(exc)}
+
+
+@router.post("/telecom/solve")
+def solve_telecom_ticket(req: TelecomSolveRequest) -> dict[str, Any]:
+    """Execute Macro-Graph SOP and LLM reasoning on a 5G RAN ticket."""
+    from tasksentry.telecom.loader import get_ticket_by_id
+    from tasksentry.telecom.runner import TelecomBatchRunner
+
+    target_ticket = get_ticket_by_id(req.ticket_id)
+    if not target_ticket:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Ticket '{req.ticket_id}' not found.",
+        )
+
+    runner = TelecomBatchRunner(
+        brain_model=req.brain_model,
+        enable_llm_reasoning=req.enable_llm,
+    )
+    res = runner.run_ticket(target_ticket, enable_llm_reasoning=req.enable_llm)
+    return res.model_dump()
