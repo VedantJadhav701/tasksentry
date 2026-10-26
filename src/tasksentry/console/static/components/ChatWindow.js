@@ -24,8 +24,8 @@ class ChatWindow {
     const card = document.createElement('div');
     card.className = 'message-card message-agent';
     card.innerHTML = `
-      <div class="message-bubble" style="border-left: 3px solid var(--accent-blue);">
-        <div style="font-weight: 600; color: var(--accent-blue); margin-bottom: 4px;">${this._escape(title)}</div>
+      <div class="message-bubble" style="border-left: 3px solid var(--ios-blue);">
+        <div style="font-weight: 600; color: var(--ios-blue); margin-bottom: 4px;">${this._escape(title)}</div>
         <div style="color: var(--text-secondary); font-size: 0.85rem;">${this._escape(detail)}</div>
       </div>
     `;
@@ -40,7 +40,7 @@ class ChatWindow {
     let contentHtml = '';
     if (action.type === 'complete_task') {
       contentHtml = `
-        <div style="font-weight: 700; color: var(--accent-primary); margin-bottom: 6px;">✓ Task Completion Declared</div>
+        <div style="font-weight: 700; color: var(--ios-green); margin-bottom: 6px;">✓ Task Completion Declared</div>
         <div>${this._escape(action.answer || 'Goal satisfied and verified.')}</div>
       `;
     } else {
@@ -59,7 +59,7 @@ class ChatWindow {
       card.className = 'message-card message-agent';
       card.innerHTML = `
         <div class="message-bubble" style="font-style: italic; color: var(--text-secondary);">
-          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 4px;">Step ${step} Reasoning Stream</span>
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--ios-purple); display: block; margin-bottom: 4px; font-weight: 600;">Step ${step} Reasoning Stream</span>
           <span id="streaming-tokens-${step}"></span>
         </div>
       `;
@@ -78,12 +78,12 @@ class ChatWindow {
     card.innerHTML = `
       <div class="tool-card-header">
         <span>⚡ Tool Invocation: ${this._escape(toolName)}</span>
-        <span style="font-size: 0.7rem; color: ${isError ? 'var(--accent-rose)' : 'var(--text-muted)'};">
+        <span style="font-size: 0.7rem; color: ${isError ? 'var(--ios-red)' : 'var(--text-secondary)'};">
           ${observation ? (isError ? 'FAILED' : 'SUCCESS') : 'RUNNING...'}
         </span>
       </div>
       <div class="tool-args">args: ${this._escape(JSON.stringify(args, null, 2))}</div>
-      ${observation ? `<div style="margin-top: 6px; color: ${isError ? 'var(--accent-rose)' : 'var(--accent-primary)'};">output: ${this._escape(observation)}</div>` : ''}
+      ${observation ? `<div style="margin-top: 6px; color: ${isError ? 'var(--ios-red)' : 'var(--ios-green)'};">output: ${this._escape(observation)}</div>` : ''}
     `;
     this.container.appendChild(card);
     this.scrollToBottom();
@@ -100,7 +100,7 @@ class ChatWindow {
       <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">
         Agent wants to execute <strong>${this._escape(tool)}</strong>: ${this._escape(reason)}
       </div>
-      <pre style="background: var(--bg-card); padding: 8px; border-radius: 4px; font-size: 0.78rem; overflow-x: auto;">${this._escape(JSON.stringify(args, null, 2))}</pre>
+      <pre style="background: rgba(0, 0, 0, 0.4); border: 0.5px solid var(--ios-glass-stroke); border-radius: 8px; padding: 10px; font-size: 0.78rem; overflow-x: auto;">${this._escape(JSON.stringify(args, null, 2))}</pre>
       <div class="approval-actions" id="actions-${approvalId}">
         <button class="btn-approve" id="btn-appr-${approvalId}">Approve & Continue</button>
         <button class="btn-reject" id="btn-rej-${approvalId}">Reject Action</button>
@@ -109,12 +109,12 @@ class ChatWindow {
     this.container.appendChild(card);
 
     document.getElementById(`btn-appr-${approvalId}`)?.addEventListener('click', () => {
-      document.getElementById(`actions-${approvalId}`).innerHTML = '<span style="color: var(--accent-primary); font-weight: 600;">✓ Approved</span>';
+      document.getElementById(`actions-${approvalId}`).innerHTML = '<span style="color: var(--ios-green); font-weight: 600;">✓ Approved</span>';
       onApprove(approvalId, taskId);
     });
 
     document.getElementById(`btn-rej-${approvalId}`)?.addEventListener('click', () => {
-      document.getElementById(`actions-${approvalId}`).innerHTML = '<span style="color: var(--accent-rose); font-weight: 600;">✗ Rejected</span>';
+      document.getElementById(`actions-${approvalId}`).innerHTML = '<span style="color: var(--ios-red); font-weight: 600;">✗ Rejected</span>';
       onReject(approvalId, taskId);
     });
 

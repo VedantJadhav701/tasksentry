@@ -30,6 +30,17 @@ class ConsoleApp {
       document.querySelector('[data-view="chat"]')?.classList.add('active');
       document.getElementById('chat-input-text')?.focus();
     });
+
+    document.querySelectorAll('.prompt-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const prompt = chip.getAttribute('data-prompt');
+        const inputArea = document.getElementById('chat-input-text');
+        if (inputArea && prompt) {
+          inputArea.value = prompt;
+          inputArea.focus();
+        }
+      });
+    });
   }
 
   switchView(view) {

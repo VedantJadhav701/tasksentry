@@ -14,7 +14,7 @@ class ReceiptPanel {
     this.container.innerHTML = `
       <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
         <div>Task ID: <strong style="font-family: var(--font-mono); color: var(--text-primary);">${receipt.task_id}</strong></div>
-        <div>Status: <strong style="color: ${receipt.success ? 'var(--accent-primary)' : 'var(--accent-rose)'};">${receipt.status}</strong></div>
+        <div>Status: <strong style="color: ${receipt.success ? 'var(--ios-green)' : 'var(--ios-red)'};">${receipt.status}</strong></div>
         <div>Total Tokens: <strong>${(receipt.tokens || 0).toLocaleString()}</strong></div>
         <div>Wall Time: <strong>${(receipt.wall_time_seconds || 0).toFixed(2)}s</strong></div>
       </div>

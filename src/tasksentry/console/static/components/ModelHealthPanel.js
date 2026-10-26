@@ -14,9 +14,9 @@ class ModelHealthPanel {
     for (const m of (healthData.models_metadata || [])) {
       const isReasoning = m.lane === 'reasoning';
       modelsHtml += `
-        <div style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="background: rgba(255, 255, 255, 0.04); border: 0.5px solid var(--ios-glass-stroke-subtle); padding: 12px; border-radius: 12px; transition: all 0.2s var(--apple-spring);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="font-family: var(--font-mono); font-size: 0.85rem;">${m.name}</strong>
+            <strong style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-primary);">${m.name}</strong>
             <span class="route-badge ${isReasoning ? 'route-reasoning' : 'route-routine'}">${m.lane}</span>
           </div>
           <div style="font-size: 0.75rem; color: var(--text-secondary);">
@@ -28,9 +28,9 @@ class ModelHealthPanel {
     modelsHtml += '</div>';
 
     this.container.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.04); padding: 10px 14px; border-radius: 12px; border: 0.5px solid var(--ios-glass-stroke-subtle);">
         <span>Ollama Server (${healthData.base_url})</span>
-        <span style="font-weight: 600; color: ${isReachable ? 'var(--accent-primary)' : 'var(--accent-rose)'};">
+        <span style="font-weight: 600; font-size: 0.8rem; color: ${isReachable ? 'var(--ios-green)' : 'var(--ios-red)'};">
           ${isReachable ? `● Online (${Math.round(healthData.latency_ms)}ms)` : '○ Unreachable'}
         </span>
       </div>

@@ -19,7 +19,7 @@ class BudgetPanel {
           <span>${tokens.toLocaleString()} / ${maxTokens ? maxTokens.toLocaleString() : '∞'} (${tokenPct}%)</span>
         </div>
         <div class="progress-bar-bg">
-          <div class="progress-bar-fill" style="width: ${tokenPct}%; ${tokenPct > 80 ? 'background-color: var(--accent-rose);' : ''}"></div>
+          <div class="progress-bar-fill" style="width: ${tokenPct}%; ${tokenPct > 80 ? 'background: var(--ios-red);' : 'background: var(--ios-green-gradient);'}"></div>
         </div>
       </div>
 
@@ -29,7 +29,7 @@ class BudgetPanel {
           <span>${toolCalls} / ${maxToolCalls || '∞'} (${toolPct}%)</span>
         </div>
         <div class="progress-bar-bg">
-          <div class="progress-bar-fill" style="width: ${toolPct}%; background-color: var(--accent-blue);"></div>
+          <div class="progress-bar-fill" style="width: ${toolPct}%; background: var(--ios-blue-gradient);"></div>
         </div>
       </div>
 
