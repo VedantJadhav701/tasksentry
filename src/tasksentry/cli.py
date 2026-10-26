@@ -264,6 +264,89 @@ def cmd_benchmark_report(args: argparse.Namespace) -> int:
     return 1
 
 
+def cmd_telecom(args: argparse.Namespace) -> int:
+    """Run Telecom 5G RAN ticket troubleshooting and automated command execution."""
+    from tasksentry.telecom.loader import filter_tickets, get_ticket_by_id
+    from tasksentry.telecom.runner import TelecomBatchRunner
+
+    dataset_path = getattr(args, "dataset", "ran_5g_logs_resolution_sft_chatml_train.jsonl")
+    if not os.path.exists(dataset_path):
+        print(f"Error: Dataset file not found at {dataset_path}")
+        return 1
+
+    runner = TelecomBatchRunner()
+
+    if getattr(args, "list_tickets", False):
+        cat = getattr(args, "category", None)
+        tickets = filter_tickets(path=dataset_path, category=cat, limit=getattr(args, "limit", 15))
+        print("==================================================")
+        print(f" TELECOM 5G RAN TICKETS ({len(tickets)} shown)")
+        print("==================================================")
+        for t in tickets:
+            print(
+                f"[{t.id}] DU-{t.metadata.du_id} Cell-{t.metadata.cell_id} | "
+                f"{t.metadata.datacenter} | {t.metadata.failure_type}"
+            )
+            print(f"   Category: {t.sop.problem_category}")
+        return 0
+
+    single_ticket_id = getattr(args, "ticket", None)
+    if single_ticket_id:
+        target_ticket = get_ticket_by_id(single_ticket_id, path=dataset_path)
+        if not target_ticket:
+            print(f"Error: Ticket '{single_ticket_id}' not found in dataset.")
+            return 1
+
+        print("==================================================")
+        print(f" TELECOM TICKET RESOLUTION: {target_ticket.id}")
+        print("==================================================")
+        print(f"Category:      {target_ticket.sop.problem_category}")
+        print(f"Target gNB:    {target_ticket.metadata.gnb_id} (DU: {target_ticket.metadata.du_id})")
+        print(f"Cluster:       {target_ticket.metadata.prefecture} ({target_ticket.metadata.datacenter})")
+        print(f"Failure Alert: {target_ticket.metadata.failure_type} (OperStatus: {target_ticket.metadata.oper_status})")
+        print("Executing Macro-Graph SOP and automated diagnostics...\n")
+
+        res = runner.run_ticket(target_ticket)
+        print("Resolution Result:")
+        print(f"  * Status:           {res.status.upper()}")
+        print(f"  * RCA Driver:       {res.rca_driver}")
+        print(f"  * Escalation Team:  {res.escalation_team or 'None (Resolved In-SOP)'}")
+        print(f"  * SOP Compliance:   {int(res.compliance_score * 100)}%")
+        print(f"  * Execution Time:   {res.wall_time_seconds}s")
+        print(f"  * Audit Receipt:    {res.audit_receipt_hash}\n")
+
+        print("Step-by-Step SOP Execution Trace:")
+        for s in res.steps_executed:
+            print(f"  [{s.status}] Step {s.step_number}: {s.title}")
+            print(f"        Cmd: {s.command_executed}")
+            if s.subissue_detected:
+                print(f"        Subissue: {s.subissue_detected}")
+            if s.escalate_to:
+                print(f"        Escalate: {s.escalate_to}")
+
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(res.model_dump(), f, indent=2)
+            print(f"\nSaved execution trace to {args.output}")
+
+        return 0
+
+    batch_count = getattr(args, "batch", 10)
+    print("==================================================")
+    print(f" TELECOM 5G RAN BATCH EVALUATION ({batch_count} tickets)")
+    print("==================================================")
+    report = runner.run_file(path=dataset_path, limit=batch_count, output_report_path=args.output)
+    print(f"Total Tickets:            {report.total_tickets}")
+    print(f"Resolved Tickets:         {report.resolved_count}")
+    print(f"Escalated Tickets:        {report.escalated_count}")
+    print(f"Average Compliance Score: {int(report.average_compliance_score * 100)}%")
+    print(f"MTTR per Ticket:          {report.mean_time_to_resolve_seconds:.2f}s")
+    if args.output:
+        print(f"Saved batch report to:    {args.output}")
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tasksentry",
@@ -342,6 +425,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_brep = subparsers.add_parser("benchmark-report", help="Inspect saved benchmark report")
     p_brep.add_argument("--run", "-r", required=True, help="Benchmark run ID or filename")
 
+    # telecom
+    p_tel = subparsers.add_parser("telecom", help="Telecom 5G RAN SOP ticket resolution")
+    p_tel.add_argument("--ticket", "-t", default=None, help="Ticket ID (e.g. tsd_000001)")
+    p_tel.add_argument("--batch", "-b", type=int, default=10, help="Batch ticket count")
+    p_tel.add_argument("--category", "-c", default=None, help="Filter by failure category")
+    p_tel.add_argument(
+        "--dataset",
+        default="ran_5g_logs_resolution_sft_chatml_train.jsonl",
+        help="Dataset file",
+    )
+    p_tel.add_argument("--output", "-o", default=None, help="Output path for JSON report")
+    p_tel.add_argument("--list-tickets", action="store_true", help="List tickets in dataset")
+    p_tel.add_argument("--limit", type=int, default=15, help="Limit when listing tickets")
+
     return parser
 
 
@@ -367,6 +464,7 @@ def main(argv: list[str] | None = None) -> int:
         "dashboard": cmd_dashboard,
         "console": cmd_console,
         "benchmark-report": cmd_benchmark_report,
+        "telecom": cmd_telecom,
     }
 
     handler = handler_map.get(args.command)
