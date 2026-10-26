@@ -217,12 +217,90 @@ def test_telecom_agent_crashloop_escalation() -> None:
         sop=sop,
     )
 
-    agent = TelecomAgent(sim_state=sim)
+    agent = TelecomAgent(sim_state=sim, enable_self_healing=False)
     result = agent.resolve_ticket(ticket)
 
     assert result.status == "escalated"
     assert "DU Software / L2" in str(result.escalation_team)
     assert len(result.steps_executed) == 2
+
+
+def test_telecom_agent_crashloop_self_healing() -> None:
+    sim = TelecomSimulationState(
+        host_reachable=True,
+        crashed_pods=["duapp-nrconfd-01 (CrashLoopBackOff)"],
+    )
+    meta = TelecomTicketMetadata(
+        ticket_id="test_heal_crash",
+        gnb_id="999",
+        du_id="1",
+        cell_id="10",
+        datacenter="tokyo01",
+        cluster="TOKYO",
+        failure_type="softwarefailure",
+        oper_status="down",
+    )
+    sop = TelecomSOP(
+        problem_category="Telecom RAN L2 - softwarefailure",
+        steps=[
+            TelecomStep.parse_raw_action(1, SAMPLE_STEP_1_ACTION),
+            TelecomStep.parse_raw_action(2, SAMPLE_STEP_2_ACTION),
+        ],
+    )
+    ticket = TelecomTicket(
+        id="test_heal_crash",
+        instruction="Software failure ticket with self healing",
+        metadata=meta,
+        sop=sop,
+    )
+
+    agent = TelecomAgent(sim_state=sim, enable_self_healing=True)
+    result = agent.resolve_ticket(ticket)
+
+    assert result.status == "resolved"
+    assert result.self_healing_applied is True
+    assert "redeploy" in str(result.self_healing_action).lower()
+    assert result.verification_passed is True
+    assert any("Self-Healing" in s.title for s in result.steps_executed)
+
+
+def test_telecom_agent_admin_lock_self_healing() -> None:
+    sim = TelecomSimulationState(
+        host_reachable=True,
+        cell_active=False,
+        admin_state="LOCKED",
+    )
+    meta = TelecomTicketMetadata(
+        ticket_id="test_admin_lock",
+        gnb_id="888",
+        du_id="2",
+        cell_id="20",
+        datacenter="osaka01",
+        cluster="OSAKA",
+        failure_type="administrative-locked",
+        oper_status="down",
+    )
+    sop = TelecomSOP(
+        problem_category="Telecom RAN L2 - administrative-locked",
+        steps=[
+            TelecomStep.parse_raw_action(1, SAMPLE_STEP_1_ACTION),
+            TelecomStep.parse_raw_action(3, SAMPLE_STEP_3_ACTION),
+        ],
+    )
+    ticket = TelecomTicket(
+        id="test_admin_lock",
+        instruction="Admin lock ticket with self healing",
+        metadata=meta,
+        sop=sop,
+    )
+
+    agent = TelecomAgent(sim_state=sim, enable_self_healing=True)
+    result = agent.resolve_ticket(ticket)
+
+    assert result.status == "resolved"
+    assert result.self_healing_applied is True
+    assert "unlock" in str(result.self_healing_action).lower()
+    assert result.verification_passed is True
 
 
 def test_telecom_batch_runner_and_metrics(tmp_path: Path) -> None:
@@ -277,4 +355,3 @@ def test_telecom_agent_brain_reasoning() -> None:
     assert res.brain_model == "telco:latest"
     assert "3GPP RAN Analysis" in res.llm_analysis
     assert "midhaulfailure" in res.llm_analysis
-

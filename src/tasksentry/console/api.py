@@ -261,6 +261,7 @@ class TelecomSolveRequest(BaseModel):
     ticket_id: str
     brain_model: str = "telco:latest"
     enable_llm: bool = True
+    enable_self_healing: bool = True
 
 
 @router.get("/telecom/tickets")
@@ -294,19 +295,19 @@ def list_telecom_tickets(limit: int = 15) -> dict[str, Any]:
 @router.post("/telecom/solve")
 def solve_telecom_ticket(req: TelecomSolveRequest) -> dict[str, Any]:
     """Execute Macro-Graph SOP and LLM reasoning on a 5G RAN ticket."""
-    from tasksentry.telecom.loader import get_ticket_by_id
+    from tasksentry.telecom.loader import resolve_or_create_ticket
     from tasksentry.telecom.runner import TelecomBatchRunner
 
-    target_ticket = get_ticket_by_id(req.ticket_id)
-    if not target_ticket:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Ticket '{req.ticket_id}' not found.",
-        )
+    target_ticket = resolve_or_create_ticket(req.ticket_id)
 
     runner = TelecomBatchRunner(
         brain_model=req.brain_model,
         enable_llm_reasoning=req.enable_llm,
+        enable_self_healing=req.enable_self_healing,
     )
-    res = runner.run_ticket(target_ticket, enable_llm_reasoning=req.enable_llm)
+    res = runner.run_ticket(
+        target_ticket,
+        enable_llm_reasoning=req.enable_llm,
+        enable_self_healing=req.enable_self_healing,
+    )
     return res.model_dump()

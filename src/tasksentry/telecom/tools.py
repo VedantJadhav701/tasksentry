@@ -70,6 +70,7 @@ class PlatformCheckArgs(BaseModel):
 
 class TimedatectlArgs(BaseModel):
     detail: bool = Field(default=True, description="Whether to include rs-timing sync status")
+    restart_sync: bool = Field(default=False, description="Attempt PTP resynchronization")
 
 
 class OruStatusArgs(BaseModel):
@@ -136,7 +137,7 @@ class TelecomSimulationState:
                 f1c_connected=True,
                 first_alarm="softwarefailure",
             )
-        if "timing" in ft:
+        if "timing" in ft or "sync" in ft or "holdover" in ft:
             return cls(
                 host_reachable=True,
                 oru_timing_locked=False,
@@ -148,6 +149,13 @@ class TelecomSimulationState:
                 host_reachable=True,
                 cell_active=False,
                 first_alarm="notifAniRuConnectivityFailure",
+            )
+        if "admin" in ft or "lock" in ft:
+            return cls(
+                host_reachable=True,
+                cell_active=False,
+                admin_state="LOCKED",
+                first_alarm="mgmtoperation",
             )
         return cls()
 
@@ -238,6 +246,19 @@ def create_telecom_tools(sim_state: TelecomSimulationState | None = None) -> lis
                 "output": f"administrativeState: {state.admin_state}",
             }
 
+        if "unlock" in cmd_lower:
+            state.admin_state = "UNLOCKED"
+            state.cell_active = True
+            state.carriers_transmitting = True
+            return {
+                "status": "PASS",
+                "cell_state": "NRCELL_DU_ACTIVE",
+                "output": (
+                    "nr-cell administrativeState set to UNLOCKED. "
+                    "Cell operational state transitioned to NRCELL_DU_ACTIVE."
+                ),
+            }
+
         return {"status": "PASS", "output": f"Command '{command}' executed successfully."}
 
     def run_notifmgr(
@@ -283,7 +304,19 @@ def create_telecom_tools(sim_state: TelecomSimulationState | None = None) -> lis
             else "No snapshot failures, sysmon reboots, or IPMI SEL errors found.",
         }
 
-    def run_timedatectl(detail: bool = True) -> dict[str, Any]:
+    def run_timedatectl(detail: bool = True, restart_sync: bool = False) -> dict[str, Any]:
+        if restart_sync:
+            state.oru_timing_locked = True
+            state.cell_active = True
+            return {
+                "status": "PASS",
+                "system_clock_synchronized": "yes",
+                "rs_timing_sync_status": "LOCKED",
+                "output": (
+                    "rs-timing service restarted. PTP GNSS/1588v2 locked. "
+                    "Frequency and phase offset < 15ns."
+                ),
+            }
         sync = "yes" if state.oru_timing_locked else "no"
         ptp = "LOCKED" if state.oru_timing_locked else "HOLDOVER"
         return {
@@ -417,3 +450,148 @@ def create_telecom_tools(sim_state: TelecomSimulationState | None = None) -> lis
         ),
     ]
     return tools
+
+
+class TelecomSolveArgs(BaseModel):
+    ticket_id: str = Field(
+        description="5G RAN ticket ID (e.g. 'tsd_000001', 'tsd_000002') or problem description"
+    )
+    enable_self_healing: bool = Field(
+        default=True,
+        description=(
+            "Whether to attempt autonomous self-healing for remediable failures "
+            "(pod crash, admin lock, PTP drift)"
+        ),
+    )
+
+
+class TelecomInspectArgs(BaseModel):
+    ticket_id: str = Field(
+        description="5G RAN ticket ID to inspect metadata and SOP steps for (e.g. 'tsd_000001')"
+    )
+
+
+class TelecomListArgs(BaseModel):
+    limit: int = Field(default=5, description="Maximum number of tickets to retrieve")
+    failure_type: str = Field(
+        default="",
+        description="Optional filter by failure type (e.g. 'softwarefailure', 'midhaulfailure')",
+    )
+
+
+def get_telecom_agent_tools() -> list[Tool]:
+    """High-level telecom investigation tools for the main TaskSentry Chat Agent."""
+
+    def handle_solve(ticket_id: str, enable_self_healing: bool = True) -> dict[str, Any]:
+        from tasksentry.telecom.loader import resolve_or_create_ticket
+        from tasksentry.telecom.runner import TelecomBatchRunner
+
+        ticket = resolve_or_create_ticket(ticket_id)
+        runner = TelecomBatchRunner(
+            enable_llm_reasoning=True,
+            enable_self_healing=enable_self_healing,
+        )
+        res = runner.run_ticket(ticket, enable_self_healing=enable_self_healing)
+        return {
+            "ticket_id": res.ticket_id,
+            "category": res.category,
+            "status": res.status,
+            "rca_driver": res.rca_driver,
+            "escalation_team": res.escalation_team,
+            "self_healing_applied": res.self_healing_applied,
+            "self_healing_action": res.self_healing_action,
+            "compliance_score": res.compliance_score,
+            "3gpp_brain_analysis": res.llm_analysis,
+            "steps_trace": [
+                {
+                    "step": s.step_number,
+                    "title": s.title,
+                    "status": s.status,
+                    "stdout": s.stdout,
+                    "subissue": s.subissue_detected,
+                    "escalate_to": s.escalate_to,
+                }
+                for s in res.steps_executed
+            ],
+            "audit_receipt": res.audit_receipt_hash,
+        }
+
+    def handle_inspect(ticket_id: str) -> dict[str, Any]:
+        from tasksentry.telecom.loader import resolve_or_create_ticket
+
+        ticket = resolve_or_create_ticket(ticket_id)
+        return {
+            "ticket_id": ticket.id,
+            "metadata": ticket.metadata.model_dump(),
+            "problem_category": ticket.sop.problem_category,
+            "sop_steps": [
+                {
+                    "step": s.step_number,
+                    "title": s.title,
+                    "commands": s.commands,
+                    "escalate_to": s.escalate_to,
+                    "stop_on_fail": s.stop_on_fail,
+                }
+                for s in ticket.sop.steps
+            ],
+            "verification_criteria": ticket.sop.verification_criteria,
+        }
+
+    def handle_list(limit: int = 5, failure_type: str = "") -> dict[str, Any]:
+        from tasksentry.telecom.loader import filter_tickets, load_tickets
+
+        if failure_type:
+            tickets = filter_tickets(failure_type=failure_type, limit=limit)
+        else:
+            tickets = load_tickets(limit=limit)
+
+        return {
+            "count": len(tickets),
+            "tickets": [
+                {
+                    "id": t.id,
+                    "gnb_id": t.metadata.gnb_id,
+                    "du_id": t.metadata.du_id,
+                    "cell_id": t.metadata.cell_id,
+                    "cluster": t.metadata.prefecture,
+                    "failure_type": t.metadata.failure_type,
+                    "oper_status": t.metadata.oper_status,
+                }
+                for t in tickets
+            ],
+        }
+
+    return [
+        Tool(
+            name="telecom_solve_ticket",
+            description=(
+                "Executes Macro-Graph 3GPP SOP and autonomous self-healing on any 5G RAN ticket. "
+                "Returns the root cause analysis (RCA), escalation team, trace, and audit receipt."
+            ),
+            callable=handle_solve,
+            input_model=TelecomSolveArgs,
+            risk="read",
+            idempotent=True,
+            timeout_seconds=30.0,
+        ),
+        Tool(
+            name="telecom_inspect_ticket",
+            description=(
+                "Inspects 5G RAN ticket metadata, gNB/DU/Cell parameters, and the 6-step SOP."
+            ),
+            callable=handle_inspect,
+            input_model=TelecomInspectArgs,
+            risk="read",
+            idempotent=True,
+            timeout_seconds=10.0,
+        ),
+        Tool(
+            name="telecom_list_tickets",
+            description="Lists available production 5G RAN tickets from the 3,813 dataset.",
+            callable=handle_list,
+            input_model=TelecomListArgs,
+            risk="read",
+            idempotent=True,
+            timeout_seconds=10.0,
+        ),
+    ]

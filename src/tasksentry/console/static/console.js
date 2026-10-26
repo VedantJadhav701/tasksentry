@@ -407,13 +407,15 @@ class ConsoleApp {
     if (brainText) brainText.textContent = 'Executing Macro-Graph diagnostics and querying telco:latest...';
 
     try {
+      const selfHealingEnabled = document.getElementById('telecom-self-healing-checkbox')?.checked ?? true;
       const res = await fetch('/api/chat/telecom/solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ticket_id: ticketId,
           brain_model: 'telco:latest',
-          enable_llm: true
+          enable_llm: true,
+          enable_self_healing: selfHealingEnabled
         })
       });
       const data = await res.json();
@@ -442,12 +444,18 @@ class ConsoleApp {
           </div>
           <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
             <div style="font-size: 0.75rem; color: var(--text-muted);">Escalation Target</div>
-            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">${data.escalation_team || 'In-SOP Resolved'}</div>
+            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">${data.escalation_team || (data.self_healing_applied ? 'Autonomous Self-Healed' : 'In-SOP Resolved')}</div>
           </div>
           <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
             <div style="font-size: 0.75rem; color: var(--text-muted);">SOP Compliance</div>
             <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-primary);">${Math.round(data.compliance_score * 100)}%</div>
           </div>
+          ${data.self_healing_applied ? `
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #10b981; font-weight: 700;">SELF-HEALED</div>
+            <div style="font-size: 0.82rem; font-weight: 600; color: #34d399;">${data.self_healing_action || 'Autonomous Recovery Completed'}</div>
+          </div>
+          ` : ''}
         `;
       }
 
@@ -459,18 +467,32 @@ class ConsoleApp {
       if (stepsCont) {
         stepsCont.innerHTML = (data.steps_executed || []).map(s => {
           const pass = s.status === 'PASS';
-          const badgeBg = pass ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-          const badgeCol = pass ? '#10b981' : '#f87171';
+          const resolved = s.status === 'RESOLVED';
+          let badgeBg = 'rgba(239, 68, 68, 0.15)';
+          let badgeCol = '#f87171';
+          if (pass) {
+            badgeBg = 'rgba(16, 185, 129, 0.15)';
+            badgeCol = '#10b981';
+          } else if (resolved) {
+            badgeBg = 'rgba(16, 185, 129, 0.25)';
+            badgeCol = '#34d399';
+          }
+          const isHeal = s.title.includes('Self-Healing');
           return `
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+            <div style="background: ${isHeal ? 'rgba(16, 185, 129, 0.06)' : 'var(--bg-card)'}; border: 1px solid ${isHeal ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)'}; border-radius: 10px; padding: 12px 14px;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-weight: 600; font-size: 0.88rem;">Step ${s.step_number}: ${s.title}</span>
-                <span style="background: ${badgeBg}; color: ${badgeCol}; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px;">${s.status}</span>
+                <span style="font-weight: 600; font-size: 0.88rem; color: ${isHeal ? '#34d399' : 'inherit'};">
+                  ${isHeal ? '🔄 ' : `Step ${s.step_number}: `}${s.title}
+                </span>
+                <span style="background: ${badgeBg}; color: ${badgeCol}; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px;">
+                  ${resolved ? 'SELF-HEALED' : s.status}
+                </span>
               </div>
               <div style="font-family: monospace; font-size: 0.78rem; background: var(--bg-elevated); padding: 6px 10px; border-radius: 6px; color: var(--text-secondary); word-break: break-all;">
                 ${s.command_executed}
               </div>
-              ${s.subissue_detected ? `<div style="margin-top: 6px; font-size: 0.8rem; color: #f87171;"><b>Subissue:</b> ${s.subissue_detected}</div>` : ''}
+              ${s.stdout ? `<div style="margin-top: 6px; font-size: 0.8rem; color: var(--text-secondary);">${s.stdout}</div>` : ''}
+              ${s.subissue_detected ? `<div style="margin-top: 4px; font-size: 0.8rem; color: #f87171;"><b>Subissue:</b> ${s.subissue_detected}</div>` : ''}
               ${s.escalate_to ? `<div style="margin-top: 2px; font-size: 0.8rem; color: #fbbf24;"><b>Escalated to:</b> ${s.escalate_to}</div>` : ''}
             </div>
           `;

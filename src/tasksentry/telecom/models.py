@@ -231,4 +231,6 @@ class TelecomResolutionResult(BaseModel):
     tokens_consumed: int = 0
     brain_model: str = "telco:latest"
     llm_analysis: str = ""
+    self_healing_applied: bool = False
+    self_healing_action: str | None = None
     audit_receipt_hash: str = ""

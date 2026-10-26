@@ -64,18 +64,21 @@ class TelecomBatchRunner:
         max_tickets: int | None = None,
         brain_model: str = "telco:latest",
         enable_llm_reasoning: bool = False,
+        enable_self_healing: bool = True,
     ) -> None:
         self.registry = registry or ToolRegistry()
         self.dataset_path = dataset_path
         self.max_tickets = max_tickets
         self.brain_model = brain_model
         self.enable_llm_reasoning = enable_llm_reasoning
+        self.enable_self_healing = enable_self_healing
 
     def run_ticket(
         self,
         ticket: TelecomTicket,
         sim_state: TelecomSimulationState | None = None,
         enable_llm_reasoning: bool | None = None,
+        enable_self_healing: bool | None = None,
     ) -> TelecomResolutionResult:
         """Run a single telecom ticket through the governed agent."""
         state = sim_state or TelecomSimulationState.from_ticket_failure_type(
@@ -84,13 +87,17 @@ class TelecomBatchRunner:
         use_llm = (
             self.enable_llm_reasoning if enable_llm_reasoning is None else enable_llm_reasoning
         )
+        use_self_healing = (
+            self.enable_self_healing if enable_self_healing is None else enable_self_healing
+        )
         agent = TelecomAgent(
             registry=self.registry,
             sim_state=state,
             brain_model=self.brain_model,
             enable_llm_reasoning=use_llm,
+            enable_self_healing=use_self_healing,
         )
-        return agent.execute_ticket(ticket)
+        return agent.execute_ticket(ticket, enable_self_healing=use_self_healing)
 
     def run_batch(
         self,

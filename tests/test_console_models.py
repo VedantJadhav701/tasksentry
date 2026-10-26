@@ -23,7 +23,7 @@ def test_model_lane_classification_in_api() -> None:
     res = client.get("/api/chat/models")
     data = res.json()
     for m in data["models_metadata"]:
-        assert m["lane"] in ("routine", "reasoning")
+        assert m["lane"] in ("routine", "reasoning", "telecom-brain")
         assert "context_window" in m
         assert m["context_window"] > 0
 

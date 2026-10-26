@@ -221,6 +221,10 @@ class ConsoleRunManager:
         registry = ToolRegistry()
         for t in BUILTIN_TOOLS:
             registry.register(t)
+        from tasksentry.telecom.tools import get_telecom_agent_tools
+
+        for t in get_telecom_agent_tools():
+            registry.register(t)
 
         # Plan creation
         run.emit("planner_started", {"goal": run.goal})
@@ -274,6 +278,10 @@ class ConsoleRunManager:
                 system_prompt=(
                     "You are a helpful autonomous agent governed by TaskSentry.\n"
                     "Inspect repository files and answer user requests safely.\n"
+                    "For 5G RAN and telecom ticket queries, use the telecom tools "
+                    "(telecom_solve_ticket, telecom_inspect_ticket, telecom_list_tickets) "
+                    "to inspect tickets, execute 3GPP SOPs, analyze root causes, "
+                    "or verify autonomous self-healing.\n"
                     "When complete, output: COMPLETE: <summary>\n"
                 ),
             )
