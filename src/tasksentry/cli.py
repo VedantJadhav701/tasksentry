@@ -227,11 +227,11 @@ def cmd_ollama_health(args: argparse.Namespace) -> int:
 
 
 def cmd_dashboard(args: argparse.Namespace) -> int:
-    """Start the local TaskSentry dashboard FastAPI application."""
-    from tasksentry.dashboard.app import run_dashboard
+    """Start the local TaskSentry dashboard / console application."""
+    from tasksentry.console.app import run_console
 
-    print(f"Starting TaskSentry dashboard on http://{args.host}:{args.port}")
-    run_dashboard(host=args.host, port=args.port)
+    print(f"Starting TaskSentry Console on http://{args.host}:{args.port}")
+    run_console(host=args.host, port=args.port)
     return 0
 
 
