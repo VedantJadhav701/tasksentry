@@ -108,20 +108,38 @@
           </div>
 
           <div class="chat-options-row">
-            <div>
-              Routine Lane:
-              <select class="chat-select" id="select-routine-model">
-                <option value="qwen2.5:3b">qwen2.5:3b</option>
-                <option value="llama3.2:1b">llama3.2:1b</option>
-              </select>
+            <div class="ios-picker-group">
+              <span class="ios-picker-label">Routine:</span>
+              <div class="ios-dropdown" id="dropdown-routine-model">
+                <button type="button" class="ios-dropdown-trigger" id="btn-routine-model" aria-haspopup="listbox">
+                  <span class="ios-dropdown-value" id="val-routine-model">qwen2.5:3b</span>
+                  <svg class="ios-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div class="ios-dropdown-menu" id="menu-routine-model" role="listbox">
+                  <!-- Populated dynamically -->
+                </div>
+                <input type="hidden" id="select-routine-model" value="qwen2.5:3b">
+              </div>
             </div>
-            <div>
-              Reasoning Lane:
-              <select class="chat-select" id="select-reasoning-model">
-                <option value="qwen3:4b-instruct-2507-q4_K_M">qwen3:4b-instruct-2507-q4_K_M</option>
-                <option value="ornith:latest">ornith:latest</option>
-              </select>
+
+            <div class="ios-picker-group">
+              <span class="ios-picker-label">Reasoning:</span>
+              <div class="ios-dropdown" id="dropdown-reasoning-model">
+                <button type="button" class="ios-dropdown-trigger" id="btn-reasoning-model" aria-haspopup="listbox">
+                  <span class="ios-dropdown-value" id="val-reasoning-model">qwen3:4b-instruct-2507-q4_K_M</span>
+                  <svg class="ios-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div class="ios-dropdown-menu" id="menu-reasoning-model" role="listbox">
+                  <!-- Populated dynamically -->
+                </div>
+                <input type="hidden" id="select-reasoning-model" value="qwen3:4b-instruct-2507-q4_K_M">
+              </div>
             </div>
+
             <label class="ios-switch-container">
               <span class="ios-switch">
                 <input type="checkbox" id="check-allow-writes">

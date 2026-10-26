@@ -11,6 +11,21 @@ class ConsoleApp {
     this.loadRecentTasks();
     this.loadModelsHealth();
     this._bindPlayground();
+    this._bindGlobalDropdownDismissal();
+  }
+
+  _bindGlobalDropdownDismissal() {
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.ios-dropdown')) {
+        document.querySelectorAll('.ios-dropdown').forEach(d => d.classList.remove('open'));
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.ios-dropdown').forEach(d => d.classList.remove('open'));
+      }
+    });
   }
 
   _bindTabs() {
@@ -144,16 +159,94 @@ class ConsoleApp {
       const data = await res.json();
       this.healthPanel.render(data);
 
-      // Populate select dropdowns
-      const routineSel = document.getElementById('select-routine-model');
-      const reasoningSel = document.getElementById('select-reasoning-model');
-      if (routineSel && reasoningSel && data.available_models) {
-        routineSel.innerHTML = data.available_models.map(m => `<option value="${m}" ${m.includes('2.5') || m.includes('1b') ? 'selected' : ''}>${m}</option>`).join('');
-        reasoningSel.innerHTML = data.available_models.map(m => `<option value="${m}" ${m.includes('qwen3') || m.includes('ornith') ? 'selected' : ''}>${m}</option>`).join('');
+      const models = data.available_models || [];
+      if (models.length > 0) {
+        // Select smart defaults:
+        // Routine: exact qwen2.5:3b > llama3.2:1b (exact/prefix) > gemma2:2b > models[0]
+        const routineDefault = models.find(m => m === 'qwen2.5:3b')
+          || models.find(m => m.startsWith('llama3.2:1b'))
+          || models.find(m => m.startsWith('gemma2:2b'))
+          || models[0];
+
+        // Reasoning: qwen3:4b-instruct-2507-q4_K_M > ornith:latest > qwen3 prefix > routineDefault
+        const reasoningDefault = models.find(m => m.startsWith('qwen3:4b-instruct'))
+          || models.find(m => m === 'ornith:latest')
+          || models.find(m => m.startsWith('qwen3:'))
+          || routineDefault;
+
+        // Initialize iOS Popover Picker for Routine Lane
+        this.setupIosDropdown(
+          'dropdown-routine-model',
+          'btn-routine-model',
+          'val-routine-model',
+          'menu-routine-model',
+          'select-routine-model',
+          models,
+          routineDefault
+        );
+
+        // Initialize iOS Popover Picker for Reasoning Lane
+        this.setupIosDropdown(
+          'dropdown-reasoning-model',
+          'btn-reasoning-model',
+          'val-reasoning-model',
+          'menu-reasoning-model',
+          'select-reasoning-model',
+          models,
+          reasoningDefault
+        );
       }
     } catch (e) {
       console.error('Health load error', e);
     }
+  }
+
+  setupIosDropdown(dropdownId, triggerBtnId, valueElId, menuElId, inputId, models, defaultModel) {
+    const dropdown = document.getElementById(dropdownId);
+    const triggerBtn = document.getElementById(triggerBtnId);
+    const valueEl = document.getElementById(valueElId);
+    const menuEl = document.getElementById(menuElId);
+    const hiddenInput = document.getElementById(inputId);
+
+    if (!dropdown || !triggerBtn || !valueEl || !menuEl || !hiddenInput) return;
+
+    let selectedModel = models.includes(defaultModel) ? defaultModel : (models[0] || '');
+    hiddenInput.value = selectedModel;
+    valueEl.textContent = selectedModel;
+
+    // Render scrollable options list with Apple checkmark
+    menuEl.innerHTML = models.map(m => `
+      <div class="ios-dropdown-item ${m === selectedModel ? 'selected' : ''}" data-value="${m}">
+        <span class="item-name">${m}</span>
+        <span class="item-check">✓</span>
+      </div>
+    `).join('');
+
+    // Toggle menu
+    triggerBtn.onclick = (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.classList.contains('open');
+      document.querySelectorAll('.ios-dropdown').forEach(d => d.classList.remove('open'));
+      if (!isOpen) {
+        dropdown.classList.add('open');
+      }
+    };
+
+    // Option selection
+    menuEl.querySelectorAll('.ios-dropdown-item').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        const val = item.getAttribute('data-value');
+        if (!val) return;
+        selectedModel = val;
+        hiddenInput.value = val;
+        valueEl.textContent = val;
+
+        menuEl.querySelectorAll('.ios-dropdown-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        dropdown.classList.remove('open');
+      };
+    });
   }
 
   _bindPlayground() {
