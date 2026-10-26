@@ -431,13 +431,14 @@ class ConsoleRunManager:
                     task.runtime.history.append(
                         {
                             "role": "assistant",
-                            "content": f"Invoked tool {tool_name} with arguments {args_str}",
+                            "content": f"I executed tool '{tool_name}' with arguments {args_str}",
                         }
                     )
+                    obs_msg = f"[Tool Observation from {tool_name}]:\n{step_res.observation}"
                     task.runtime.history.append(
                         {
-                            "role": "tool",
-                            "content": step_res.observation,
+                            "role": "user",
+                            "content": obs_msg,
                         }
                     )
 
