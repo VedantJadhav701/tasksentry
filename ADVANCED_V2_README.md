@@ -74,7 +74,7 @@ returns hypothesis probabilities; they are pooled with the Bayesian posterior, a
 Run from the repo/zip root:
 ```
 pip install fastapi uvicorn pydantic
-PYTHONPATH=. python -m uvicorn webapp.server:app --port 8080
+tasksentry console --host 127.0.0.1 --port 8321
 # open http://localhost:8080
 ```
 Tabs: **Onboard** (paste/upload a record, pick `beam:cloud`, sensor noise, pre-approval), **Live Run** (animated SOP graph: nodes light up red/green as probes run, numbered in execution order, unused steps dim as "skipped (low info gain)"; live posterior bars; terminal stream; signed-audit result card), **Harness** (generated hypotheses, probes, remediations, notes).

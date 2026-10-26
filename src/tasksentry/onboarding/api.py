@@ -43,6 +43,15 @@ def analyze(req: OnboardRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.post("/normalize")
+def normalize(req: OnboardRequest) -> dict[str, Any]:
+    """Convert ordinary JSON into the canonical TaskSentry agent-record format."""
+    try:
+        return pipeline.normalize(req.record, _llm(req))
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.post("/run")
 def run(req: OnboardRequest) -> dict[str, Any]:
     try:

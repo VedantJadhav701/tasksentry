@@ -96,6 +96,22 @@ def test_get_models_health_endpoint() -> None:
     assert "models_metadata" in data
 
 
+def test_onboarding_health_and_webapp_sample_endpoints() -> None:
+    assert client.get("/api/onboard/health").json()["status"] == "ok"
+    sample = client.get("/webapp/sample_ticket.json")
+    assert sample.status_code == 200
+    assert "tsd_" in sample.text
+
+
+def test_root_uses_universal_console_and_classic_console_is_preserved() -> None:
+    root = client.get("/")
+    assert root.status_code == 200
+    assert "Upload one record" in root.text
+    assert client.get("/style.css").status_code == 200
+    assert client.get("/app.js").status_code == 200
+    assert "TaskSentry Console" in client.get("/classic/").text
+
+
 def test_get_routing_audit_endpoint() -> None:
     res = client.get("/api/chat/routing/task_test_routing")
     assert res.status_code == 200

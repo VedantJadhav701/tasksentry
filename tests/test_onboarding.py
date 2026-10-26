@@ -84,3 +84,21 @@ def test_unknown_format_uses_llm_mapping():
 
     a = pipeline.analyze(json.dumps(rec), llm)
     assert a["profile"]["format"] == "llm-mapped" and len(a["spec"]["hypotheses"]) == 2
+
+
+def test_normalize_unstructured_json_to_agent_record():
+    raw = {
+        "ticket_id": "customer-42",
+        "description": "Investigate a failed service deployment.",
+        "customer": {"region": "eu-west"},
+        "events": [{"message": "deployment unavailable"}],
+    }
+
+    result = pipeline.normalize(raw)
+    normalized = result["normalized_record"]
+
+    assert normalized["id"] == "customer-42"
+    assert normalized["instruction"] == raw["description"]
+    assert normalized["input"] == raw
+    assert normalized["_tasksentry"]["normalized"] is True
+    assert normalized["output"]["problem_category"] == "unclassified"

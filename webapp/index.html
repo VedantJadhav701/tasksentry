@@ -15,6 +15,7 @@
     <button data-tab="onboard" class="on">Onboard</button>
     <button data-tab="live">Live Run</button>
     <button data-tab="spec">Harness</button>
+    <button data-tab="architecture">Architecture</button>
   </div>
   <span class="pill" id="conn">offline</span>
 </header>
@@ -38,6 +39,7 @@
         <div class="row">
           <button class="btn ghost" id="loadSample">Load sample telecom ticket</button>
           <label class="file btn ghost">Choose file<input type="file" id="file" accept=".json,.jsonl,.txt"></label>
+          <button class="btn ghost" id="normalize">Convert JSON to agent format</button>
         </div>
         <div class="opts">
           <label class="switch"><input type="checkbox" id="useLlm" checked><span></span> Use beam:cloud recognition</label>
@@ -57,6 +59,7 @@
         <div class="row">
           <button class="btn" id="analyze">Recognize &amp; build</button>
           <button class="btn primary" id="runBtn">Run governed harness</button>
+          <span id="processTime" class="process-time" aria-live="polite"></span>
         </div>
         <div id="err" class="err"></div>
       </div>
@@ -64,6 +67,11 @@
         <h2>2 · Recognition</h2>
         <p class="sub" id="recogEmpty">Nothing analyzed yet.</p>
         <div id="recogBody"></div>
+        <details class="normalized-panel" id="normalizedPanel">
+          <summary>Canonical agent record</summary>
+          <p class="sub">Use this for ordinary or unstructured JSON. Original data is retained under <code>input</code>.</p>
+          <pre id="normalizedJson"></pre>
+        </details>
         <div class="trust-note"><span class="dot"></span><span>Live mode requires an explicitly registered backend.</span></div>
       </div>
     </div>
@@ -89,6 +97,42 @@
   <!-- SPEC -->
   <section id="tab-spec" class="tab">
     <div class="card glass"><h2>Generated harness</h2><div id="specBody"><p class="sub">Run “Recognize &amp; build” first.</p></div></div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="tab-architecture" class="tab">
+    <div class="architecture-hero glass">
+      <div>
+        <span class="eyebrow">TASKSENTRY AGENT ARCHITECTURE</span>
+        <h2>Governed autonomy by design.</h2>
+        <p class="sub">The model proposes. The harness decides. The backend acts only through an allowlisted interface. Independent telemetry verifies the result.</p>
+      </div>
+      <span class="pill ok">policy-first agent</span>
+    </div>
+    <div class="architecture-flow">
+      <article class="architecture-node input-node"><span class="architecture-index">01</span><div class="architecture-icon">↓</div><h3>Input &amp; context</h3><p>JSON, JSONL, ChatML, tickets, logs, or customer records.</p><small>preserve source evidence</small></article>
+      <div class="architecture-arrow">→</div>
+      <article class="architecture-node"><span class="architecture-index">02</span><div class="architecture-icon">◈</div><h3>Recognition</h3><p>Detect format, entities, procedures, labels, and confidence.</p><small>deterministic first · model assisted</small></article>
+      <div class="architecture-arrow">→</div>
+      <article class="architecture-node"><span class="architecture-index">03</span><div class="architecture-icon">⌘</div><h3>Harness synthesis</h3><p>Build hypotheses, probes, SOP graph, remediation policy, and escalation.</p><small>domain pack generated</small></article>
+      <div class="architecture-arrow">→</div>
+      <article class="architecture-node"><span class="architecture-index">04</span><div class="architecture-icon">⌁</div><h3>Diagnosis</h3><p>Choose evidence-efficient probes and update the Bayesian posterior.</p><small>confidence and entropy tracked</small></article>
+    </div>
+    <div class="architecture-flow second-flow">
+      <article class="architecture-node gate-node"><span class="architecture-index">05</span><div class="architecture-icon">◇</div><h3>Risk governor</h3><p>Classify reads, reversible writes, system writes, and irreversible writes.</p><small>approval and budget gates</small></article>
+      <div class="architecture-arrow">→</div>
+      <article class="architecture-node"><span class="architecture-index">06</span><div class="architecture-icon">⚙</div><h3>Backend execution</h3><p>Call only registered customer adapters and named operations.</p><small>simulation or live mode</small></article>
+      <div class="architecture-arrow">→</div>
+      <article class="architecture-node verify-node"><span class="architecture-index">07</span><div class="architecture-icon">✓</div><h3>Independent verification</h3><p>Read authoritative post-state; retry reversible actions once, then escalate.</p><small>no unverified resolution</small></article>
+      <div class="architecture-arrow">→</div>
+      <article class="architecture-node audit-node"><span class="architecture-index">08</span><div class="architecture-icon">✦</div><h3>Receipt &amp; learning</h3><p>Emit audit evidence, metrics, escalation, and reusable harness feedback.</p><small>signed when configured</small></article>
+    </div>
+    <div class="architecture-policies">
+      <div><b>Model boundary</b><span>Advisory recognition and RCA only</span></div>
+      <div><b>Execution boundary</b><span>Allowlisted backend functions only</span></div>
+      <div><b>Trust boundary</b><span>Independent telemetry verification</span></div>
+      <div><b>Failure boundary</b><span>Escalate when evidence is insufficient</span></div>
+    </div>
   </section>
 </main>
 <script src="app.js"></script>

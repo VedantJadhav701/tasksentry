@@ -14,7 +14,12 @@ from typing import Any
 
 from tasksentry.harness.backend import DomainBackend, default_backend_registry
 from tasksentry.harness.engine import UniversalEngine
-from tasksentry.onboarding.infer import RecordProfile, extract_json, profile_record
+from tasksentry.onboarding.infer import (
+    RecordProfile,
+    extract_json,
+    normalize_record,
+    profile_record,
+)
 from tasksentry.onboarding.synth import (
     HarnessSpec,
     SimulatedBackend,
@@ -89,6 +94,13 @@ def _profile_and_spec(raw: Any, llm: LLM | None) -> tuple[RecordProfile, Harness
 def analyze(raw: Any, llm: LLM | None = None) -> dict[str, Any]:
     profile, spec = _profile_and_spec(raw, llm)
     return {"profile": asdict(profile), "spec": spec.to_dict(), "graph": build_graph(spec)}
+
+
+def normalize(raw: Any, llm: LLM | None = None) -> dict[str, Any]:
+    """Return a canonical agent record generated from arbitrary JSON."""
+    profile = profile_record(raw, llm)
+    record = normalize_record(raw, llm, profile=profile)
+    return {"normalized_record": record, "profile": asdict(profile)}
 
 
 def run(

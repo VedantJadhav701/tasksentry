@@ -260,7 +260,11 @@ See [docs/console.md](docs/console.md) for full console documentation.
 
 ## Universal Harness Onboarding
 
-Upload one representative customer record through the web console to infer its
+Open `http://127.0.0.1:8321/` for the modern universal onboarding console.
+The original chat and telecom console remains available at
+`http://127.0.0.1:8321/classic/`.
+
+Upload one representative customer record through the universal console to infer its
 format, entities, SOP steps, root-cause hypotheses, probes, remediation policy,
 escalation routes, and live visual graph. The optional Ollama model defaults to
 `beam:cloud` for recognition and advisory RCA; deterministic parsing and risk

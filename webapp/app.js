@@ -2,12 +2,31 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let spec = null, graph = null, playing = 0;
+let spec = null, graph = null, playing = 0, processTimer = null;
 
 document.querySelectorAll("#seg button").forEach((b) => b.onclick = () => showTab(b.dataset.tab));
 function showTab(t) {
   document.querySelectorAll("#seg button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   document.querySelectorAll(".tab").forEach((s) => s.classList.toggle("on", s.id === "tab-" + t));
+}
+function processing(label) {
+  const started = performance.now();
+  const analyze = $("#analyze");
+  const run = $("#runBtn");
+  analyze.disabled = true;
+  run.disabled = true;
+  const update = () => {
+    $("#processTime").textContent = `${label} · ${((performance.now() - started) / 1000).toFixed(1)}s`;
+  };
+  update();
+  processTimer = setInterval(update, 100);
+  return () => {
+    clearInterval(processTimer);
+    processTimer = null;
+    analyze.disabled = false;
+    run.disabled = false;
+    $("#processTime").textContent = `${label} · ${((performance.now() - started) / 1000).toFixed(1)}s`;
+  };
 }
 $("#noise").oninput = (e) => $("#noiseV").textContent = e.target.value + "%";
 $("#loadSample").onclick = async () => {
@@ -21,6 +40,14 @@ $("#loadSample").onclick = async () => {
   }
 };
 $("#file").onchange = async (e) => { const f = e.target.files[0]; if (f) $("#record").value = await f.text(); };
+$("#normalize").onclick = async () => {
+  const stop = processing("Normalizing JSON");
+  try {
+    const j = await post("/api/onboard/normalize");
+    $("#normalizedJson").textContent = JSON.stringify(j.normalized_record, null, 2);
+    $("#normalizedPanel").open = true;
+  } catch (e) {} finally { stop(); }
+};
 
 function payload() {
   return { record: $("#record").value, use_llm: $("#useLlm").checked, model: $("#model").value || "beam:cloud",
@@ -39,9 +66,13 @@ async function post(url) {
   return j;
 }
 
-$("#analyze").onclick = async () => { try { const j = await post("/api/onboard/analyze"); render(j); } catch (e) {} };
+$("#analyze").onclick = async () => {
+  const stop = processing("Recognizing format");
+  try { const j = await post("/api/onboard/analyze"); render(j); } catch (e) {} finally { stop(); }
+};
 $("#runBtn").onclick = async () => {
-  try { const j = await post("/api/onboard/run"); render(j); showTab("live"); await replay(j); } catch (e) {}
+  const stop = processing("Running governed harness");
+  try { const j = await post("/api/onboard/run"); render(j); showTab("live"); await replay(j); } catch (e) {} finally { stop(); }
 };
 
 function render(j) {

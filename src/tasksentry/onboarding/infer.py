@@ -215,6 +215,64 @@ def profile_record(raw: Any, llm: Callable[[str], str] | None = None) -> RecordP
     )
 
 
+def normalize_record(
+    raw: Any,
+    llm: Callable[[str], str] | None = None,
+    profile: RecordProfile | None = None,
+) -> dict[str, Any]:
+    """Convert an ordinary JSON object into TaskSentry's agent-record contract."""
+    rec = load_record(raw)
+    if not isinstance(rec, dict):
+        raise ValueError("Record must be a JSON object before normalization.")
+    profile = profile or profile_record(rec, llm)
+    record_id = next(
+        (
+            str(rec[key])
+            for key in ("id", "record_id", "ticket_id", "case_id", "case", "ticket")
+            if rec.get(key) is not None
+        ),
+        "generated-record",
+    )
+    instruction = profile.instruction.strip()
+    if not instruction:
+        instruction = str(
+            rec.get("description")
+            or rec.get("title")
+            or rec.get("question")
+            or f"Process customer record {record_id}."
+        )
+    task_plan = [step.text for step in profile.steps if step.text]
+    actions = [
+        {
+            "step": step.number,
+            "action": step.text,
+            "commands": step.commands,
+            "expected_pass": step.expected_pass,
+            "expected_fail": step.expected_fail,
+            "escalate": step.escalate,
+            "stop": step.stop,
+        }
+        for step in profile.steps
+    ]
+    return {
+        "id": record_id,
+        "instruction": instruction,
+        "input": rec,
+        "output": {
+            "problem_category": profile.category or "unclassified",
+            "task_plan": task_plan,
+            "actions": actions,
+            "verification": profile.verification,
+        },
+        "_tasksentry": {
+            "normalized": True,
+            "source_format": profile.format,
+            "confidence": profile.confidence,
+            "warnings": profile.warnings,
+        },
+    }
+
+
 def _llm_mapping(rec: dict[str, Any], llm: Callable[[str], str]) -> list[dict[str, Any]] | None:
     prompt = (
         "You recognize dataset record formats. Given this JSON record, reply ONLY with JSON "
