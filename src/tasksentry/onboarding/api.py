@@ -25,6 +25,12 @@ class OnboardRequest(BaseModel):
     backend_id: str | None = None
 
 
+@router.get("/health")
+def health() -> dict[str, str]:
+    """Return a lightweight health response for the web console connection pill."""
+    return {"status": "ok", "service": "onboarding"}
+
+
 def _llm(req: OnboardRequest) -> Any:
     return ollama_llm(req.model) if req.use_llm else None
 

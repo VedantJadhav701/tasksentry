@@ -176,6 +176,8 @@ class TelecomTicket(BaseModel):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TelecomTicket:
+        if "sop" in data and isinstance(data["sop"], dict):
+            return cls.model_validate(data)
         meta = TelecomTicketMetadata.from_instruction(data.get("instruction", ""))
         output_data = data.get("output", {})
         actions_raw = output_data.get("actions", [])

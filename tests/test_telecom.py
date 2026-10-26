@@ -304,7 +304,26 @@ def test_telecom_agent_admin_lock_self_healing() -> None:
 
 
 def test_telecom_batch_runner_and_metrics(tmp_path: Path) -> None:
-    runner = TelecomBatchRunner(max_tickets=3)
+    # 1. Test batch execution with a mock JSONL dataset file
+    dummy_file = tmp_path / "dummy_dataset.jsonl"
+    meta = TelecomTicketMetadata.from_instruction(SAMPLE_INSTRUCTION)
+    sop = TelecomSOP(
+        problem_category="Telecom RAN L2 - midhaulfailure",
+        steps=[
+            TelecomStep.parse_raw_action(1, SAMPLE_STEP_1_ACTION),
+            TelecomStep.parse_raw_action(4, SAMPLE_STEP_4_ACTION),
+        ],
+    )
+    sample_ticket = TelecomTicket(
+        id="tsd_dummy_001",
+        instruction=SAMPLE_INSTRUCTION,
+        metadata=meta,
+        sop=sop,
+    )
+    with open(dummy_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(sample_ticket.model_dump()) + "\n")
+
+    runner = TelecomBatchRunner(dataset_path=str(dummy_file), max_tickets=3)
     report = runner.run_batch()
 
     assert report.total_tickets > 0
@@ -322,6 +341,13 @@ def test_telecom_batch_runner_and_metrics(tmp_path: Path) -> None:
         data = json.load(f)
     assert "total_tickets" in data
     assert "results" in data
+
+    # 2. Test fallback when dataset file does not exist (e.g. CI environments)
+    runner_fallback = TelecomBatchRunner(
+        dataset_path=str(tmp_path / "nonexistent.jsonl"), max_tickets=2
+    )
+    fallback_report = runner_fallback.run_batch()
+    assert fallback_report.total_tickets == 2
 
 
 def test_telecom_agent_brain_reasoning() -> None:

@@ -158,6 +158,8 @@ def iter_tickets(path: str = DEFAULT_DATASET_PATH) -> Iterator[TelecomTicket]:
 
 def load_tickets(path: str = DEFAULT_DATASET_PATH, limit: int | None = None) -> list[TelecomTicket]:
     """Load tickets up to an optional limit."""
+    if not Path(path).exists():
+        return []
     tickets: list[TelecomTicket] = []
     for t in iter_tickets(path):
         tickets.append(t)
@@ -168,6 +170,8 @@ def load_tickets(path: str = DEFAULT_DATASET_PATH, limit: int | None = None) -> 
 
 def get_ticket_by_id(ticket_id: str, path: str = DEFAULT_DATASET_PATH) -> TelecomTicket | None:
     """Retrieve a single ticket by its ID (e.g. 'tsd_000001')."""
+    if not Path(path).exists():
+        return None
     target = ticket_id.lower().strip()
     for t in iter_tickets(path):
         if t.id.lower() == target or target in t.metadata.ticket_id.lower():
@@ -183,6 +187,8 @@ def filter_tickets(
     limit: int = 20,
 ) -> list[TelecomTicket]:
     """Filter tickets by failure category, datacenter, or failure type."""
+    if not Path(path).exists():
+        return []
     results: list[TelecomTicket] = []
     for t in iter_tickets(path):
         if category and category.lower() not in t.sop.problem_category.lower():

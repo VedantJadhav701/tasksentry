@@ -10,7 +10,16 @@ function showTab(t) {
   document.querySelectorAll(".tab").forEach((s) => s.classList.toggle("on", s.id === "tab-" + t));
 }
 $("#noise").oninput = (e) => $("#noiseV").textContent = e.target.value + "%";
-$("#loadSample").onclick = async () => { $("#record").value = await (await fetch("/sample")).text(); };
+$("#loadSample").onclick = async () => {
+  try {
+    const response = await fetch("/webapp/sample_ticket.json");
+    if (!response.ok) throw new Error(`Sample record unavailable (${response.status})`);
+    $("#record").value = await response.text();
+    $("#err").textContent = "";
+  } catch (error) {
+    $("#err").textContent = error.message || "Could not load the sample record";
+  }
+};
 $("#file").onchange = async (e) => { const f = e.target.files[0]; if (f) $("#record").value = await f.text(); };
 
 function payload() {
@@ -22,7 +31,11 @@ async function post(url) {
   $("#err").textContent = "";
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload()) });
   const j = await r.json();
-  if (!r.ok) { $("#err").textContent = j.detail || "Request failed"; throw new Error(j.detail); }
+  if (!r.ok) {
+    const detail = j.detail || `Request failed (${r.status})`;
+    $("#err").textContent = detail;
+    throw new Error(detail);
+  }
   return j;
 }
 
@@ -140,7 +153,7 @@ async function replay(j) {
   }
   const r = j.result;
   const c = $("#resultCard"); c.hidden = false;
-  c.innerHTML = `<h2>Result <span class="pill ${r.status === "resolved" ? "ok" : "warn"}">${esc(r.status)}</span> <span class="pill">simulated backend</span></h2>
+  c.innerHTML = `<h2>Result <span class="pill ${r.status === "resolved" ? "ok" : "warn"}">${esc(r.status)}</span> <span class="pill">${esc(j.execution_mode || "simulation")} backend</span></h2>
     <div class="kv"><b>Root cause</b><span>${esc(r.diagnosis.hypothesis)} (${(r.diagnosis.confidence * 100).toFixed(1)}%)</span>
     <b>Probes run</b><span>${r.diagnosis.probes_run.length} of ${spec.probes.length} · entropy ${r.diagnosis.entropy_start_bits.toFixed(2)} → ${r.diagnosis.entropy_end_bits.toFixed(2)} bits</span>
     <b>Remediation</b><span>${esc(r.remediation ? r.remediation.name + " (" + r.remediation.risk + ")" : "none")}</span>

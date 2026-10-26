@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from tasksentry.telecom.agent import TelecomAgent
-from tasksentry.telecom.loader import load_tickets
+from tasksentry.telecom.loader import load_tickets, resolve_or_create_ticket
 from tasksentry.telecom.models import TelecomResolutionResult, TelecomTicket
 from tasksentry.telecom.tools import TelecomSimulationState
 from tasksentry.tools.registry import ToolRegistry
@@ -108,7 +108,21 @@ class TelecomBatchRunner:
         """Run a batch of tickets and calculate SLA and compliance metrics."""
         if tickets is None:
             effective_limit = limit if limit is not None else (self.max_tickets or 10)
-            tickets = load_tickets(path=self.dataset_path, limit=effective_limit)
+            if not Path(self.dataset_path).exists():
+                logger.warning(
+                    "Dataset file %s not found. Using synthetic tickets for batch.",
+                    self.dataset_path,
+                )
+                tickets = [
+                    resolve_or_create_ticket(
+                        f"Ticket tsd_{i:06d}: (gnb_id {9000000 + i}, du_id {i}, cell_id {i * 10}) "
+                        "is reporting: softwarefailure down.",
+                        path=self.dataset_path,
+                    )
+                    for i in range(1, effective_limit + 1)
+                ]
+            else:
+                tickets = load_tickets(path=self.dataset_path, limit=effective_limit)
 
         t0 = time.perf_counter()
         results: list[TelecomResolutionResult] = []
