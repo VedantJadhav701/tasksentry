@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from tasksentry.console.api import router as console_router
 from tasksentry.console.api_v2 import router as telecom_v2_router
+from tasksentry.console.domain_api import router as domain_router
 from tasksentry.dashboard.api import router as dashboard_router
 from tasksentry.onboarding.api import router as onboarding_router
 
@@ -28,6 +29,7 @@ def create_console_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(telecom_v2_router)
     app.include_router(onboarding_router)
+    app.include_router(domain_router)
 
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

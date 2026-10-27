@@ -9,7 +9,10 @@ from collections.abc import Callable
 
 
 def ollama_llm(
-    model: str = "beam:cloud", base_url: str | None = None, timeout: float = 120.0
+    model: str = "beam:cloud",
+    base_url: str | None = None,
+    timeout: float = 120.0,
+    record_prefix: str | None = None,
 ) -> Callable[[str], str]:
     base = (base_url or os.environ.get("OLLAMA_HOST") or "http://127.0.0.1:11434").rstrip("/")
     api_key = os.environ.get("OLLAMA_API_KEY", "")
@@ -17,6 +20,8 @@ def ollama_llm(
         base = "http://" + base
 
     def call(prompt: str) -> str:
+        if record_prefix:
+            prompt = f"Redacted customer context:\n{record_prefix}\n\n{prompt}"
         body = json.dumps(
             {
                 "model": model,

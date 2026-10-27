@@ -1,3 +1,97 @@
+# Domain DSLM + Governed Autonomy Report
+
+## Status
+
+PASS for the offline/deterministic domain milestones M1-M7. The existing
+`tasksentry_phase7` directory was preserved; implementation continued in the
+active repository root because the root already contained the telecom,
+onboarding, and current test tree.
+
+## Implemented
+
+- **M1:** `src/tasksentry/domain/schema.py`, `ingest.py`, `redact.py`, and
+  `split.py`: canonical trajectories, JSON/JSONL/CSV/ChatML recognition,
+  optional recognizer protocol disabled by default, tenant-local redaction,
+  stable deduplication, and time/customer leakage-safe splits.
+- **M2:** `domain/catalog.py`: versioned typed command catalogs, structured
+  validation errors, argv-only rendering, preconditions, tenant scope,
+  rollback links, human-reviewable drafts, and ToolRegistry/ToolGovernor
+  integration.
+- **M3:** `domain/datasets.py`: deterministic SFT, preference, refusal, and
+  format-repair JSONL exports plus dataset cards. Added CLI commands:
+  `domain ingest`, `domain catalog`, and `domain export`.
+- **M4:** `domain/autonomy.py`: L0-L3 policy decisions, shadow proposals,
+  kill switch, rate/blast-radius caps, Wilson promotion gates, and optional
+  fail-closed ToolGovernor policy callback. Added Console autonomy/review/
+  proposal endpoints.
+- **M5:** `domain/replay.py`: deterministic simulated backend, harness-only
+  baseline, pluggable prediction protocol, root-cause/escalation/calibration/
+  safety/validity metrics, confidence intervals, JSON/Markdown reports, and
+  regression comparison. Added `domain eval` CLI command.
+- **M6:** Added Console Governance tab and safe DOM rendering for autonomy
+  levels, approvals, harness reviews, shadow proposals, and kill switch.
+- **M7:** Added `docs/domain.md`, architecture/security/README updates,
+  cloud recognition opt-in with tenant-local redaction, and
+  `examples/domain_5g_demo.py`.
+
+## Final verification
+
+Real command output:
+
+```text
+$ py -3.11 -m pytest -q
+446 passed, 1 warning in 14.20s
+
+$ py -3.11 -m ruff check .
+All checks passed!
+
+$ py -3.11 -m ruff format --check .
+351 files already formatted
+
+$ py -3.11 -m mypy src/tasksentry
+Success: no issues found in 105 source files
+```
+
+Node smoke checks also passed for `webapp/app.js` and the existing Console
+`console.js`. The repository gained 111 tests over the 335-test root baseline,
+exceeding the 85-test requirement.
+
+## Replay baseline
+
+The offline 5G demo evaluated one simulated ticket (`n=1`) using the
+harness-only model:
+
+- root-cause top-1: `1.0`
+- root-cause top-3: `1.0`
+- format validity: `1.0`
+- tool-call validity: `1.0`
+- unsafe-action rate: `0.0`
+- probe efficiency: `1.0`
+- simulated shadow proposals: `6`
+
+These are a smoke baseline, not a production performance claim. The sample is
+fully simulated and too small for promotion.
+
+## Known limitations
+
+- Replay uses recorded observations and does not prove behavior against live
+  network systems.
+- The harness-only baseline is not a fine-tuned DSLM; no training pipeline or
+  constrained decoding is included yet.
+- Hypothesis quality and labels depend on source data and human verification.
+- Real customer backends, vault credential injection, external audit anchoring,
+  and multi-tenant hosted deployment remain future work.
+- Local Console governance state is process-local; review endpoints record
+  decisions but do not replace a durable customer workflow.
+
+## Next phase
+
+Build the training pipeline (LoRA SFT followed by preference tuning), model
+registry and promotion records, constrained JSON decoding, durable tenant
+policy storage, and real backend adapters behind the typed catalog.
+
+---
+
 # Phase 6 Report: Open-Source Release Readiness (v0.1.0)
 
 ## Status

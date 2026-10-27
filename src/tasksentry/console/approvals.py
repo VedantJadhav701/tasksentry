@@ -121,6 +121,11 @@ class ApprovalManager:
             appr_ids = self._by_task.get(task_id, [])
             return [self._requests[aid] for aid in appr_ids if aid in self._requests]
 
+    def list_pending(self) -> list[ApprovalRequest]:
+        """Return every pending approval for the local governance panel."""
+        with self._lock:
+            return [request for request in self._requests.values() if request.status == "pending"]
+
 
 # Shared global approval manager for console runtime
 default_approval_manager = ApprovalManager()

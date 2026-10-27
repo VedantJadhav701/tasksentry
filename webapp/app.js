@@ -8,6 +8,7 @@ document.querySelectorAll("#seg button").forEach((b) => b.onclick = () => showTa
 function showTab(t) {
   document.querySelectorAll("#seg button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   document.querySelectorAll(".tab").forEach((s) => s.classList.toggle("on", s.id === "tab-" + t));
+  if (t === "governance") loadGovernance();
 }
 function processing(label) {
   const started = performance.now();
@@ -50,7 +51,8 @@ $("#normalize").onclick = async () => {
 };
 
 function payload() {
-  return { record: $("#record").value, use_llm: $("#useLlm").checked, model: $("#model").value || "beam:cloud",
+  return { record: $("#record").value, tenant_id: $("#tenantId").value.trim() || "default", use_llm: $("#useLlm").checked,
+           cloud_opt_in: $("#cloudOptIn").checked, model: $("#model").value || "beam:cloud",
            flip_prob: +$("#noise").value / 100, approve_high_risk: $("#approve").checked,
            execution_mode: $("#mode").value, backend_id: $("#backend").value.trim() || null };
 }
@@ -104,6 +106,65 @@ function render(j) {
 function bar(h, v, top) {
   return `<div class="bar ${top ? "top" : ""}" data-h="${esc(h)}"><span title="${esc(h)}">${esc(h)}</span><div class="t"><div class="f" data-w="${(v * 100).toFixed(1)}%" style="width:${(v * 100).toFixed(1)}%"></div></div><span>${(v * 100).toFixed(0)}%</span></div>`;
 }
+
+// ---------- governance ----------
+const governanceText = (parent, value) => {
+  const span = document.createElement("span");
+  span.textContent = value == null ? "—" : String(value);
+  parent.appendChild(span);
+};
+function governanceTenant() { return $("#governanceTenant")?.value.trim() || "default"; }
+async function loadGovernance() {
+  const tenant = encodeURIComponent(governanceTenant());
+  try {
+    const [autonomy, reviews, proposals] = await Promise.all([
+      fetch(`/api/domain/autonomy?tenant_id=${tenant}`).then((r) => r.json()),
+      fetch(`/api/domain/reviews?tenant_id=${tenant}`).then((r) => r.json()),
+      fetch(`/api/domain/proposals?tenant_id=${tenant}`).then((r) => r.json()),
+    ]);
+    const levels = $("#autonomyLevels");
+    levels.replaceChildren();
+    Object.entries(autonomy.policy.levels || {}).forEach(([risk, level]) => {
+      const row = document.createElement("div");
+      row.className = "kv-row";
+      governanceText(row, risk);
+      governanceText(row, level);
+      levels.appendChild(row);
+    });
+    $("#killSwitchStatus").textContent = autonomy.kill_switch ? "enabled" : "off";
+    $("#killSwitch").textContent = autonomy.kill_switch ? "Disable kill switch" : "Enable kill switch";
+    renderGovernanceList("#pendingApprovals", autonomy.pending_approvals || [], (item) => `${item.tool} · ${item.risk}`);
+    renderGovernanceList("#reviewItems", reviews.reviews || [], (item) => `${item.kind}: ${item.name} · ${item.risk_tier} · ${item.status}`);
+    renderGovernanceList("#shadowProposals", proposals.proposals || [], (item) => `${item.command_id} · ${item.risk_tier} · human: ${item.human_action || "pending"}`);
+  } catch (error) {
+    $("#killSwitchStatus").textContent = "offline";
+  }
+}
+function renderGovernanceList(selector, items, label) {
+  const root = $(selector);
+  if (!root) return;
+  root.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "sub";
+    empty.textContent = "None";
+    root.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "step";
+    row.textContent = label(item);
+    root.appendChild(row);
+  });
+}
+$("#refreshGovernance")?.addEventListener("click", loadGovernance);
+$("#governanceTenant")?.addEventListener("change", loadGovernance);
+$("#killSwitch")?.addEventListener("click", async () => {
+  const current = $("#killSwitchStatus")?.textContent === "enabled";
+  await fetch(`/api/domain/autonomy/kill-switch?tenant_id=${encodeURIComponent(governanceTenant())}&enabled=${!current}`, { method: "POST" });
+  loadGovernance();
+});
 function setPosterior(post) {
   const entries = Object.entries(post).sort((a, b) => b[1] - a[1]);
   $("#post").innerHTML = entries.map(([h, v], i) => bar(h, v, i === 0)).join("");

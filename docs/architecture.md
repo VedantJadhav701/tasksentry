@@ -157,3 +157,39 @@ The Phase 7 TaskSentry Console introduces a chat-first interactive plane with re
 - **`ApprovalManager` (`src/tasksentry/console/approvals.py`)**: Human-in-the-loop pause-and-resume gate for unsafe write actions.
 - **`RouterPlayground` (`src/tasksentry/console/routing.py`)**: Multi-lane comparison engine comparing routine, reasoning, and routed decisions.
 - **`ConsoleRunManager` (`src/tasksentry/console/runs.py`)**: Background execution manager broadcasting lifecycle events via Server-Sent Events (SSE).
+
+---
+
+## 5. Domain DSLM and governed autonomy plane
+
+The domain layer sits before and beside the existing CASE runtime:
+
+```
+Tickets / SOPs / outcomes
+          |
+          v
+ Canonical schema -> redaction -> time/customer split
+          |
+          +--> typed command catalog (argv only, human-approved draft)
+          |
+          +--> SFT / preference / refusal datasets + dataset card
+          |
+          +--> shadow proposal -> autonomy policy -> ToolGovernor
+                                      |
+                                      v
+                         simulated replay / real backend adapter
+                                      |
+                                      v
+                         verification -> receipt / feedback
+```
+
+`tasksentry.domain.schema` is the single trajectory contract. `catalog.py`
+keeps command identity, argument typing, risk, preconditions, verifier,
+rollback, and tenant scope outside untrusted ticket/SOP text. `autonomy.py`
+provides L0-L3 decisions, caps, kill switch, shadow records, and promotion
+evidence. `replay.py` evaluates recorded observations through a deterministic
+simulated backend before a model or catalog is promoted.
+
+The Console exposes these controls through `/api/domain/autonomy`,
+`/api/domain/reviews`, and `/api/domain/proposals`; review endpoints only
+change review state and do not execute a command.

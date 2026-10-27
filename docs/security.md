@@ -44,7 +44,42 @@ safety = SafetyRules(
 
 ---
 
-## 3. Budget Hard Limits
+## 3. Domain data, tenancy, and command safety
+
+Domain records are untrusted input. Ticket text, logs, retrieved SOP text, and
+command output cannot change a command's catalog risk, tenant scope, autonomy
+level, kill switch, or approval requirement. Domain actions are catalog IDs
+with typed arguments and are rendered as argv lists; free-form model shell
+commands are not an execution interface.
+
+Each domain record carries a tenant ID. Redaction occurs before exported
+training data and before an explicitly authorized cloud-model call. Cloud
+recognition is off by default and requires a per-tenant opt-in. The reversible
+redaction map must remain inside that tenant's protected boundary.
+
+The autonomy ladder is fail-closed: L0 proposes only, L1 runs reads, L2 may
+run reversible writes with verification/rollback evidence, and L3 always
+requires approval. Unknown commands, failed policy evaluation, failed
+verification, budget failures, kill-switch activation, rate-limit exhaustion,
+and blast-radius violations do not execute.
+
+The Console's harness review endpoints record approved/rejected proposals but
+do not execute them. Use the existing approval manager for pending L3 actions.
+
+---
+
+## 4. Audit-chain scope
+
+TaskSentry receipts and domain reports provide **integrity evidence** through
+hashes and deterministic source hashes. This is not external notarization: an
+operator who controls the storage can still delete or replace the whole local
+history. Customer-held signing keys or an external timestamp/anchoring service
+are required for independently anchored audit history and are not included in
+the offline domain layer.
+
+---
+
+## 5. Budget Hard Limits
 
 TaskSentry enforces hard budget limits prospectively:
 - **Token Limits**: Prevents context-stuffing and excessive token consumption.
@@ -56,7 +91,7 @@ When a hard limit is breached, the harness emits a `BUDGET_HARD_LIMIT` event, se
 
 ---
 
-## 4. Repetition & Duplicate Action Suppression
+## 6. Repetition & Duplicate Action Suppression
 
 Prompt injection attacks or model confusion often cause agents to enter infinite repetition loops (e.g., polling an unchanged endpoint or repeatedly writing the same file).
 
@@ -67,7 +102,7 @@ If an identical action is repeated beyond the configured threshold (`block_thres
 
 ---
 
-## 5. Dashboard Security
+## 7. Dashboard Security
 
 The local developer dashboard binds to `127.0.0.1` by default:
 - Do not expose port `8321` to public network interfaces.

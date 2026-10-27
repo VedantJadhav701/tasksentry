@@ -134,3 +134,76 @@ def test_post_playground_compare_endpoint() -> None:
     assert "routine_lane" in data
     assert "reasoning_lane" in data
     assert "routed_response" in data
+
+
+def test_domain_autonomy_panel_endpoints_are_fail_closed() -> None:
+    response = client.get("/api/domain/autonomy?tenant_id=console-test")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["policy"]["levels"]["system_write"] == "L3"
+    assert data["pending_approvals"] == []
+
+    updated = client.put(
+        "/api/domain/autonomy",
+        json={"tenant_id": "console-test", "levels": {"read": "L1"}},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["policy"]["levels"]["read"] == "L1"
+
+    killed = client.post("/api/domain/autonomy/kill-switch?tenant_id=console-test&enabled=true")
+    assert killed.status_code == 200 and killed.json()["kill_switch"] is True
+
+
+def test_domain_review_and_shadow_proposal_endpoints_require_explicit_review() -> None:
+    review = client.post(
+        "/api/domain/reviews",
+        json={
+            "tenant_id": "console-review",
+            "kind": "remediation",
+            "name": "redeploy_du",
+            "risk_tier": "system_write",
+            "payload": {"command_id": "redeploy_du"},
+        },
+    )
+    assert review.status_code == 201
+    review_id = review.json()["review_id"]
+    assert (
+        client.get("/api/domain/reviews?tenant_id=console-review").json()["reviews"][0]["status"]
+        == "pending"
+    )
+    approved = client.post(f"/api/domain/reviews/{review_id}/approve", json={"note": "lab only"})
+    assert approved.status_code == 200 and approved.json()["status"] == "approved"
+
+    proposal = client.post(
+        "/api/domain/proposals",
+        json={
+            "tenant_id": "console-review",
+            "command_id": "redeploy_du",
+            "risk_tier": "system_write",
+            "args": {"target": "du-1"},
+        },
+    )
+    assert proposal.status_code == 201
+    assert client.get("/api/domain/proposals?tenant_id=console-review").json()["proposals"]
+
+
+def test_governance_tab_uses_safe_dom_rendering() -> None:
+    html = client.get("/").text
+    script = client.get("/app.js").text
+    assert 'data-tab="governance"' in html
+    assert "autonomyLevels" in html and "shadowProposals" in html
+    assert "replaceChildren" in script and "loadGovernance" in script
+
+
+def test_cloud_recognition_requires_explicit_tenant_opt_in() -> None:
+    refused = client.post(
+        "/api/onboard/analyze",
+        json={
+            "record": '{"id":"t1"}',
+            "tenant_id": "regulated",
+            "use_llm": True,
+            "model": "beam:cloud",
+        },
+    )
+    assert refused.status_code == 422
+    assert "opt-in" in refused.json()["detail"]

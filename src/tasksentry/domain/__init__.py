@@ -1,0 +1,125 @@
+"""Domain data, ingestion, catalog, dataset, autonomy, and replay primitives.
+
+The domain package is deliberately independent of model providers.  It turns
+customer records into versioned, redacted trajectories that the existing
+TaskSentry harness can govern.
+"""
+
+from tasksentry.domain.autonomy import (
+    ActionRateLimiter,
+    AutonomyPolicy,
+    PolicyDecision,
+    PromotionCriteria,
+    PromotionDecision,
+    PromotionEvidence,
+    ShadowProposal,
+    ShadowRecorder,
+    can_promote,
+    decide_action,
+    make_catalog_policy_callback,
+    wilson_lower_bound,
+)
+from tasksentry.domain.catalog import (
+    CatalogDraft,
+    CatalogValidationError,
+    CommandCatalog,
+    draft_from_sop,
+    load_catalog,
+)
+from tasksentry.domain.datasets import (
+    DatasetExportReport,
+    build_trajectories,
+    export_datasets,
+    format_repair_records,
+    preference_records,
+    refusal_records,
+    sft_records,
+)
+from tasksentry.domain.ingest import (
+    FormatRecognition,
+    IngestError,
+    IngestIssue,
+    IngestResult,
+    Recognizer,
+    deduplicate_records,
+    ingest,
+    recognize_format,
+)
+from tasksentry.domain.redact import RedactionStats, TenantRedactor
+from tasksentry.domain.replay import (
+    EvalReport,
+    HarnessOnlyModel,
+    RegressionDecision,
+    ReplayBackend,
+    ReplayError,
+    ReplayPrediction,
+    compare_baseline,
+    evaluate_replay,
+    write_eval_report,
+)
+from tasksentry.domain.schema import (
+    CommandSpec,
+    LabelSource,
+    Outcome,
+    SopDoc,
+    Step,
+    Ticket,
+    Trajectory,
+)
+from tasksentry.domain.split import SplitError, SplitResult, split_records
+
+__all__ = [
+    "ActionRateLimiter",
+    "AutonomyPolicy",
+    "CatalogDraft",
+    "CatalogValidationError",
+    "CommandCatalog",
+    "CommandSpec",
+    "DatasetExportReport",
+    "EvalReport",
+    "FormatRecognition",
+    "HarnessOnlyModel",
+    "IngestError",
+    "IngestIssue",
+    "IngestResult",
+    "LabelSource",
+    "Outcome",
+    "PolicyDecision",
+    "PromotionCriteria",
+    "PromotionDecision",
+    "PromotionEvidence",
+    "Recognizer",
+    "RedactionStats",
+    "RegressionDecision",
+    "ReplayBackend",
+    "ReplayError",
+    "ReplayPrediction",
+    "ShadowProposal",
+    "ShadowRecorder",
+    "SopDoc",
+    "SplitError",
+    "SplitResult",
+    "Step",
+    "TenantRedactor",
+    "Ticket",
+    "Trajectory",
+    "build_trajectories",
+    "can_promote",
+    "compare_baseline",
+    "decide_action",
+    "deduplicate_records",
+    "draft_from_sop",
+    "evaluate_replay",
+    "export_datasets",
+    "format_repair_records",
+    "ingest",
+    "load_catalog",
+    "make_catalog_policy_callback",
+    "preference_records",
+    "recognize_format",
+    "refusal_records",
+    "sft_records",
+    "split_records",
+    "wilson_lower_bound",
+    "write_eval_report",
+]

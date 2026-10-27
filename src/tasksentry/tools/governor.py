@@ -48,6 +48,7 @@ class ToolGovernor:
         sandbox: Sandbox | None = None,
         safety: SafetyRules | None = None,
         write_approval_callback: Callable[[str, Mapping[str, Any]], bool] | None = None,
+        autonomy_decider: Callable[[str, str, Mapping[str, Any]], Any] | None = None,
     ) -> None:
         self.registry = registry
         self.budget = budget
@@ -55,6 +56,7 @@ class ToolGovernor:
         self.sandbox = sandbox or Sandbox(mode="in_process")
         self.safety = safety or SafetyRules()
         self.write_approval_callback = write_approval_callback
+        self.autonomy_decider = autonomy_decider
         self.events: list[Event] = []
         self.blocked_duplicates_count: int = 0
         self.controller_penalty_total: float = 0.0
@@ -174,8 +176,49 @@ class ToolGovernor:
                 "message": msg,
             }
 
+        autonomy_requires_approval = False
+        if self.autonomy_decider is not None:
+            try:
+                policy_decision = self.autonomy_decider(tool_name, risk_name, valid_args)
+                policy_payload = (
+                    policy_decision.model_dump(mode="json")
+                    if hasattr(policy_decision, "model_dump")
+                    else dict(policy_decision)
+                )
+                policy_action = str(policy_payload.get("action", "escalate"))
+            except Exception as exc:
+                msg = f"Autonomy policy evaluation failed closed: {type(exc).__name__}: {exc}"
+                self._emit(TOOL_ERROR, msg, {"tool": tool_name, "reason": "autonomy_policy_error"})
+                return {
+                    "status": "blocked",
+                    "reason": "autonomy_policy_error",
+                    "message": msg,
+                }
+            if policy_action in {"deny", "escalate", "propose_only"}:
+                msg = f"Autonomy policy returned {policy_action} for {tool_name!r}."
+                self._emit(TOOL_ERROR, msg, {"tool": tool_name, "policy": policy_payload})
+                return {
+                    "status": "blocked",
+                    "reason": f"autonomy_{policy_action}",
+                    "message": msg,
+                    "policy_decision": policy_payload,
+                }
+            if policy_action == "require_approval":
+                autonomy_requires_approval = True
+            elif policy_action != "execute":
+                msg = f"Unknown autonomy decision {policy_action!r}; execution denied."
+                self._emit(TOOL_ERROR, msg, {"tool": tool_name, "policy": policy_payload})
+                return {
+                    "status": "blocked",
+                    "reason": "autonomy_unknown_decision",
+                    "message": msg,
+                    "policy_decision": policy_payload,
+                }
+
         # 6. Write safety policy
-        if risk_name in write_risks and self.safety.require_approval_for_writes:
+        if (risk_name in write_risks and self.safety.require_approval_for_writes) or (
+            autonomy_requires_approval
+        ):
             has_approval = approved_write or (
                 self.write_approval_callback is not None
                 and self.write_approval_callback(tool_name, valid_args)

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from tasksentry.domain.redact import TenantRedactor
 from tasksentry.onboarding import pipeline
 from tasksentry.onboarding.llm import ollama_llm
 
@@ -16,8 +17,10 @@ router = APIRouter(prefix="/api/onboard", tags=["Onboarding"])
 class OnboardRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     record: str
-    use_llm: bool = True
+    tenant_id: str = "default"
+    use_llm: bool = False
     model: str = "beam:cloud"
+    cloud_opt_in: bool = False
     truth: str | None = None
     flip_prob: float = 0.0
     approve_high_risk: bool = False
@@ -32,7 +35,12 @@ def health() -> dict[str, str]:
 
 
 def _llm(req: OnboardRequest) -> Any:
-    return ollama_llm(req.model) if req.use_llm else None
+    if not req.use_llm:
+        return None
+    if "cloud" in req.model.lower() and not req.cloud_opt_in:
+        raise ValueError("Cloud model use requires explicit per-tenant opt-in.")
+    redacted = TenantRedactor(req.tenant_id, redact_ips=True).redact_text(req.record)
+    return ollama_llm(req.model, record_prefix=redacted[:12000])
 
 
 @router.post("/analyze")

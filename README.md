@@ -28,6 +28,26 @@ TaskSentry acts as an execution supervisor and control harness. It wraps agent e
 - **Automated Tiered Recovery**: Graceful backoff retry, forced replanning, context compaction, and human escalation.
 - **Immutable Task Receipts**: Cryptographically auditable receipts recording durable state changes, token consumption, and verifications.
 
+## Domain DSLM Workflow (5G RAN L2)
+
+TaskSentry also provides an offline domain workflow for service companies with
+ticket data, SOPs, commands, and outcomes:
+
+- Canonical tenant-scoped trajectories with PII/secret redaction and leakage-safe time splits.
+- Typed command catalogs that render argument lists only; models never execute free-form shell text.
+- Deterministic SFT, preference, refusal, and format-repair exports with dataset cards.
+- L0 shadow, L1 read-only, L2 reversible-write, and L3 approval autonomy levels with kill switches and promotion evidence.
+- Replay evaluation over recorded observations with unsafe-action detection, confidence intervals, and regression gates.
+
+Run the offline demo:
+
+```bash
+python examples/domain_5g_demo.py --out reports/domain-demo
+```
+
+See [docs/domain.md](docs/domain.md) for the schema, catalog, datasets,
+autonomy policy, replay evaluator, tenancy, and security boundaries.
+
 ## What TaskSentry Does NOT Do
 
 - **TaskSentry does NOT replace LangGraph, CrewAI, AutoGen, or the OpenAI Agents SDK.** It is an execution harness and control layer that sits between your agent logic and host infrastructure.

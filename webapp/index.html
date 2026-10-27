@@ -14,8 +14,9 @@
   <div class="seg" id="seg">
     <button data-tab="onboard" class="on">Onboard</button>
     <button data-tab="live">Live Run</button>
-    <button data-tab="spec">Harness</button>
-    <button data-tab="architecture">Architecture</button>
+       <button data-tab="spec">Harness</button>
+       <button data-tab="governance">Governance</button>
+       <button data-tab="architecture">Architecture</button>
   </div>
   <span class="pill" id="conn">offline</span>
 </header>
@@ -41,10 +42,12 @@
           <label class="file btn ghost">Choose file<input type="file" id="file" accept=".json,.jsonl,.txt"></label>
           <button class="btn ghost" id="normalize">Convert JSON to agent format</button>
         </div>
-        <div class="opts">
-          <label class="switch"><input type="checkbox" id="useLlm" checked><span></span> Use beam:cloud recognition</label>
-          <input id="model" value="beam:cloud" aria-label="model name">
-        </div>
+         <div class="opts">
+           <label>Tenant<input id="tenantId" value="default" aria-label="tenant id"></label>
+           <label class="switch"><input type="checkbox" id="useLlm"><span></span> Use local model recognition</label>
+           <label class="switch"><input type="checkbox" id="cloudOptIn"><span></span> Explicitly opt in to cloud after redaction</label>
+           <input id="model" value="beam:cloud" aria-label="model name">
+         </div>
         <div class="control-grid">
           <label>Execution mode<select id="mode"><option value="simulation">Simulation preview</option><option value="live">Live governed backend</option></select></label>
           <label>Backend ID<input id="backend" placeholder="registered-backend" aria-label="backend id"></label>
@@ -97,6 +100,30 @@
   <!-- SPEC -->
   <section id="tab-spec" class="tab">
     <div class="card glass"><h2>Generated harness</h2><div id="specBody"><p class="sub">Run “Recognize &amp; build” first.</p></div></div>
+  </section>
+
+  <!-- GOVERNANCE -->
+  <section id="tab-governance" class="tab">
+    <div class="grid2">
+      <div class="card glass">
+        <div class="cardhead"><h2>Autonomy policy</h2><button class="btn ghost" id="refreshGovernance">Refresh</button></div>
+        <p class="sub">The model proposes; this policy decides. Review changes never execute commands.</p>
+        <label>Tenant<input id="governanceTenant" value="default" aria-label="governance tenant"></label>
+        <div id="autonomyLevels" class="kv" aria-live="polite"></div>
+        <div class="row">
+          <button class="btn" id="killSwitch">Enable kill switch</button>
+          <span class="pill" id="killSwitchStatus">unknown</span>
+        </div>
+        <h3>Pending approvals</h3><div id="pendingApprovals" class="stack"></div>
+      </div>
+      <div class="card glass">
+        <h2>Harness review</h2>
+        <p class="sub">Hypotheses, probes, and remediations remain proposed until explicitly approved.</p>
+        <div id="reviewItems" class="stack"></div>
+        <h2>Shadow proposals</h2>
+        <div id="shadowProposals" class="stack"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ARCHITECTURE -->

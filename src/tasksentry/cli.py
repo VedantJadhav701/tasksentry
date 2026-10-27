@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 from tasksentry.config import load_config
@@ -361,6 +362,142 @@ def cmd_telecom(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_domain_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8"
+    )
+
+
+def cmd_domain_ingest(args: argparse.Namespace) -> int:
+    from tasksentry.domain.ingest import ingest
+    from tasksentry.domain.redact import TenantRedactor
+
+    result = ingest(args.input, strict=args.strict, deduplicate=True)
+    redactor = TenantRedactor(args.tenant, redact_ips=args.redact_ips)
+    records = [redactor.redact_record(record) for record in result.records]
+    output = Path(args.out)
+    if output.suffix.lower() == ".jsonl":
+        records_path = output
+        report_path = output.with_name(output.stem + "-report.json")
+    else:
+        output.mkdir(parents=True, exist_ok=True)
+        records_path = output / "records.jsonl"
+        report_path = output / "ingest-report.json"
+    records_path.write_text(
+        "".join(json.dumps(record, sort_keys=True, default=str) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    _write_domain_json(
+        report_path,
+        {
+            "tenant_id": args.tenant,
+            "recognition": result.recognition.model_dump(mode="json"),
+            "records": len(records),
+            "issues": [issue.model_dump(mode="json") for issue in result.issues],
+            "duplicates_removed": result.duplicates_removed,
+            "redaction_stats": redactor.stats.__dict__,
+            "records_path": str(records_path),
+        },
+    )
+    print(json.dumps({"records": len(records), "out": str(records_path)}, sort_keys=True))
+    return 0
+
+
+def cmd_domain_catalog(args: argparse.Namespace) -> int:
+    from tasksentry.domain.catalog import CommandCatalog, draft_from_sop
+    from tasksentry.domain.schema import SopDoc
+
+    data = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    sop = SopDoc.model_validate(data)
+    if sop.tenant_id != args.tenant:
+        raise ValueError("SOP tenant_id does not match --tenant")
+    draft = draft_from_sop(sop, version=args.version)
+    output = Path(args.out)
+    if args.approve:
+        catalog = CommandCatalog(
+            tenant_id=draft.tenant_id,
+            version=draft.version,
+            commands=draft.commands,
+        )
+        catalog.validate_links()
+        _write_domain_json(output, catalog.model_dump(mode="json"))
+    else:
+        _write_domain_json(output, draft.model_dump(mode="json"))
+    print(json.dumps({"approved": args.approve, "out": str(output)}, sort_keys=True))
+    return 0
+
+
+def cmd_domain_export(args: argparse.Namespace) -> int:
+    from tasksentry.domain.datasets import export_datasets
+    from tasksentry.domain.schema import Trajectory
+
+    lines = Path(args.input).read_text(encoding="utf-8").splitlines()
+    trajectories = [Trajectory.model_validate(json.loads(line)) for line in lines if line.strip()]
+    selected = [trajectory for trajectory in trajectories if trajectory.tenant_id == args.tenant]
+    report = export_datasets(selected, args.out, catalog_version=args.catalog_version)
+    print(json.dumps(report.model_dump(mode="json"), sort_keys=True))
+    return 0
+
+
+def cmd_domain_eval(args: argparse.Namespace) -> int:
+    from tasksentry.domain.replay import (
+        EvalReport,
+        compare_baseline,
+        evaluate_replay,
+        write_eval_report,
+    )
+    from tasksentry.domain.schema import Trajectory
+
+    lines = Path(args.input).read_text(encoding="utf-8").splitlines()
+    trajectories = [Trajectory.model_validate(json.loads(line)) for line in lines if line.strip()]
+    selected = [
+        trajectory
+        for trajectory in trajectories
+        if trajectory.tenant_id == args.tenant
+        and (not args.split or trajectory.context.get("split") in (None, args.split))
+    ]
+    report = evaluate_replay(
+        selected,
+        tenant_id=args.tenant,
+        split=args.split,
+        model_name=args.model,
+    )
+    json_path, markdown_path = write_eval_report(report, args.out)
+    result: dict[str, Any] = {
+        "json": str(json_path),
+        "markdown": str(markdown_path),
+        "samples": report.samples,
+    }
+    if args.baseline:
+        baseline_data = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
+        decision = compare_baseline(
+            report,
+            EvalReport.model_validate(baseline_data),
+            tolerance=args.tolerance,
+        )
+        result["regression"] = decision.model_dump(mode="json")
+        print(json.dumps(result, sort_keys=True))
+        return 0 if decision.passed else 1
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def cmd_domain(args: argparse.Namespace) -> int:
+    """Ingest domain data, draft catalogs, or export DSLM datasets."""
+    handlers = {
+        "ingest": cmd_domain_ingest,
+        "catalog": cmd_domain_catalog,
+        "export": cmd_domain_export,
+        "eval": cmd_domain_eval,
+    }
+    handler = handlers.get(args.domain_command)
+    if handler is None:
+        print("A domain subcommand is required: ingest, catalog, export, or eval.", file=sys.stderr)
+        return 2
+    return handler(args)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tasksentry",
@@ -455,6 +592,40 @@ def build_parser() -> argparse.ArgumentParser:
     p_tel.add_argument("--list-tickets", action="store_true", help="List tickets in dataset")
     p_tel.add_argument("--limit", type=int, default=15, help="Limit when listing tickets")
 
+    # domain DSLM data workflow
+    p_domain = subparsers.add_parser("domain", help="Domain data and DSLM workflow")
+    domain_sub = p_domain.add_subparsers(dest="domain_command")
+    p_d_ingest = domain_sub.add_parser(
+        "ingest", help="Recognize, redact, and ingest domain records"
+    )
+    p_d_ingest.add_argument("--input", "-i", required=True)
+    p_d_ingest.add_argument("--tenant", required=True)
+    p_d_ingest.add_argument("--out", "-o", required=True)
+    p_d_ingest.add_argument("--redact-ips", action="store_true")
+    p_d_ingest.add_argument("--strict", action="store_true")
+
+    p_d_catalog = domain_sub.add_parser("catalog", help="Draft a typed command catalog from an SOP")
+    p_d_catalog.add_argument("--input", "-i", required=True)
+    p_d_catalog.add_argument("--tenant", required=True, help="Expected tenant ID")
+    p_d_catalog.add_argument("--out", "-o", required=True)
+    p_d_catalog.add_argument("--version", default="draft-1")
+    p_d_catalog.add_argument("--approve", action="store_true", help="Explicitly approve the draft")
+
+    p_d_export = domain_sub.add_parser("export", help="Export deterministic DSLM datasets")
+    p_d_export.add_argument("--input", "-i", required=True, help="Canonical trajectory JSONL")
+    p_d_export.add_argument("--tenant", required=True)
+    p_d_export.add_argument("--out", "-o", required=True, help="Output directory")
+    p_d_export.add_argument("--catalog-version", default="unknown")
+
+    p_d_eval = domain_sub.add_parser("eval", help="Replay-evaluate a domain trajectory JSONL")
+    p_d_eval.add_argument("--input", "-i", required=True)
+    p_d_eval.add_argument("--tenant", required=True)
+    p_d_eval.add_argument("--split", default="test")
+    p_d_eval.add_argument("--out", "-o", required=True)
+    p_d_eval.add_argument("--model", default="harness-only")
+    p_d_eval.add_argument("--baseline", default=None)
+    p_d_eval.add_argument("--tolerance", type=float, default=0.02)
+
     return parser
 
 
@@ -481,6 +652,7 @@ def main(argv: list[str] | None = None) -> int:
         "console": cmd_console,
         "benchmark-report": cmd_benchmark_report,
         "telecom": cmd_telecom,
+        "domain": cmd_domain,
     }
 
     handler = handler_map.get(args.command)
