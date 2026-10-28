@@ -135,6 +135,67 @@ class OllamaClient(ModelClient):
     ) -> ModelResponse:
         """Issue completion request to Ollama and measure latency."""
         start = time.perf_counter()
+        schema_format = kwargs.get("response_format") or kwargs.get("format")
+
+        # When a JSON schema is requested for grammar-constrained decoding, call
+        # Ollama's native /api/chat endpoint which enforces token-level schema masks
+        if schema_format is not None and tools is None:
+            format_dict: Any = schema_format
+            if hasattr(schema_format, "model_json_schema") and callable(
+                schema_format.model_json_schema
+            ):
+                format_dict = schema_format.model_json_schema()
+            elif isinstance(schema_format, dict) and schema_format.get("type") == "json_schema":
+                format_dict = schema_format.get("json_schema", {}).get("schema", schema_format)
+
+            native_base = self.base_url
+            if native_base.endswith("/v1"):
+                native_base = native_base[:-3]
+            native_url = f"{native_base}/api/chat"
+
+            model_name = kwargs.pop("model", self.model)
+            timeout = float(kwargs.pop("timeout", self.timeout_seconds))
+            kwargs.pop("response_format", None)
+            kwargs.pop("format", None)
+
+            payload = {
+                "model": model_name,
+                "messages": messages,
+                "stream": False,
+                "format": format_dict,
+                **kwargs,
+            }
+
+            headers = {"Content-Type": "application/json"}
+            if self.api_key and self.api_key != "ollama":
+                headers["Authorization"] = f"Bearer {self.api_key}"
+
+            body_bytes = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                native_url, data=body_bytes, headers=headers, method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    raw_data = json.loads(resp.read().decode("utf-8"))
+                    msg = raw_data.get("message", {})
+                    content = msg.get("content", "")
+                    elapsed = time.perf_counter() - start
+                    raw_data["latency_seconds"] = round(elapsed, 4)
+                    return ModelResponse(
+                        content=content,
+                        tool_calls=[],
+                        input_tokens=raw_data.get("prompt_eval_count", 0),
+                        output_tokens=raw_data.get("eval_count", 0),
+                        model=raw_data.get("model", model_name),
+                        finish_reason="stop",
+                        raw_response=raw_data,
+                    )
+            except urllib.error.HTTPError as exc:
+                err_body = exc.read().decode("utf-8", errors="replace")
+                raise ModelError(f"Ollama HTTP {exc.code} from {native_url}: {err_body}") from exc
+            except Exception as exc:
+                raise ModelError(f"Ollama request failed: {exc}") from exc
+
         try:
             resp = self._underlying.complete(
                 messages=messages,

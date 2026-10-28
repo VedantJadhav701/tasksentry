@@ -100,6 +100,25 @@ class OpenAICompatibleClient(ModelClient):
         if tools:
             payload["tools"] = convert_tools_to_openai_format(tools)
 
+        # Grammar-constrained decoding (Ollama & OpenAI schema enforcement)
+        schema_format = kwargs.pop("response_format", None) or kwargs.pop("format", None)
+        if schema_format is not None:
+            # If a Pydantic model class is passed, extract its JSON schema
+            if hasattr(schema_format, "model_json_schema") and callable(
+                schema_format.model_json_schema
+            ):
+                payload["format"] = schema_format.model_json_schema()
+            elif isinstance(schema_format, dict):
+                # If wrapped in OpenAI's {"type": "json_object", "schema": ...}
+                if schema_format.get("type") == "json_schema" and "json_schema" in schema_format:
+                    payload["format"] = schema_format["json_schema"].get("schema", schema_format)
+                else:
+                    payload["format"] = schema_format
+            elif isinstance(schema_format, str):
+                payload["format"] = schema_format
+        # Clean up any leftover response_format or format in payload
+        payload.pop("response_format", None)
+
         body_bytes = json.dumps(payload).encode("utf-8")
         timeout = float(kwargs.get("timeout", self.timeout))
 
