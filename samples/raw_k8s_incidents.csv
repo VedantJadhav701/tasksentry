@@ -1,0 +1,4 @@
+ticket_id,timestamp,namespace,cluster,severity,alert_name,description,assigned_team,target_ip
+INC-1001,2026-10-28T10:00:00Z,payments,prod-us-east-1,critical,OOMKilled,Payment-processor worker pod exceeded 4Gi memory limit and was terminated,SRE-Cloud,10.244.15.22
+INC-1002,2026-10-28T10:15:00Z,auth,prod-us-east-1,high,CrashLoopBackOff,Auth-service failing readiness probes after v2.4 rollout due to config syntax error,Core-Infra,10.244.18.91
+INC-1003,2026-10-28T10:30:00Z,ingress,prod-eu-west-1,critical,BadGateway502,NGINX ingress upstream connection refused for checkout frontend,Edge-Networking,10.244.20.104

@@ -384,6 +384,7 @@ def cmd_domain_ingest(args: argparse.Namespace) -> int:
         output.mkdir(parents=True, exist_ok=True)
         records_path = output / "records.jsonl"
         report_path = output / "ingest-report.json"
+    records_path.parent.mkdir(parents=True, exist_ok=True)
     records_path.write_text(
         "".join(json.dumps(record, sort_keys=True, default=str) + "\n" for record in records),
         encoding="utf-8",

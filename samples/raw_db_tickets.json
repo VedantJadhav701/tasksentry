@@ -1,0 +1,24 @@
+[
+  {
+    "case_id": "DB-901",
+    "timestamp": "2026-10-28T11:00:00Z",
+    "engine": "PostgreSQL-16",
+    "host": "db-primary-01.internal",
+    "client_ip": "10.0.50.88",
+    "issue": "ConnectionPoolExhausted",
+    "details": "Active connections reached 500/500 max_connections pool limit. API gateways receiving FATAL: sorry, too many clients already.",
+    "diagnostic_command": "SELECT count(*), state FROM pg_stat_activity GROUP BY state;",
+    "resolution_step": "Terminate idle-in-transaction connections and scale PgBouncer pooler."
+  },
+  {
+    "case_id": "DB-902",
+    "timestamp": "2026-10-28T11:20:00Z",
+    "engine": "PostgreSQL-16",
+    "host": "db-replica-02.internal",
+    "client_ip": "10.0.50.89",
+    "issue": "ReplicationLagSpike",
+    "details": "Replication delay exceeded 300 seconds on read replica 2 following batch ETL invoice processing.",
+    "diagnostic_command": "SELECT pg_last_wal_receive_lsn() - pg_last_wal_replay_lsn() AS delay_bytes;",
+    "resolution_step": "Throttle batch job vacuum and increase max_standby_streaming_delay."
+  }
+]

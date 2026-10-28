@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/api/onboard", tags=["Onboarding"])
 
 class OnboardRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    record: str
+    record: str | dict[str, Any]
     tenant_id: str = "default"
     use_llm: bool = False
     model: str = "beam:cloud"
@@ -39,7 +40,8 @@ def _llm(req: OnboardRequest) -> Any:
         return None
     if "cloud" in req.model.lower() and not req.cloud_opt_in:
         raise ValueError("Cloud model use requires explicit per-tenant opt-in.")
-    redacted = TenantRedactor(req.tenant_id, redact_ips=True).redact_text(req.record)
+    raw_text = req.record if isinstance(req.record, str) else json.dumps(req.record)
+    redacted = TenantRedactor(req.tenant_id, redact_ips=True).redact_text(raw_text)
     return ollama_llm(req.model, record_prefix=redacted[:12000])
 
 

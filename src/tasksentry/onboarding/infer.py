@@ -113,9 +113,41 @@ def parse_step(num: int, text: str) -> StepInfo:
     title = text.split(".", 1)[0].strip()[:120]
     seg = re.search(r"Command\(s\):(.*?)(?:Expected:|$)", text, re.S)
     commands = re.findall(r"'([^']+)'", seg.group(1)) if seg else []
+    if not commands:
+        commands = re.findall(r"`([^`]+)`", text)
+        if not commands and ":" in text:
+            after_colon = text.split(":", 1)[1].strip()
+            first_cmd = after_colon.split(";")[0].strip()
+            if any(
+                first_cmd.startswith(w)
+                for w in (
+                    "ping",
+                    "kubectl",
+                    "systemctl",
+                    "show ",
+                    "cat ",
+                    "ls ",
+                    "curl",
+                    "SELECT",
+                    "ps ",
+                    "df ",
+                )
+            ):
+                commands = [first_cmd]
     ep = re.search(r"PASS:\s*(.*?)\s*FAIL:", text, re.S)
     ef = re.search(r"FAIL:\s*(.*?)(?:\.\s*If it fails:|$)", text, re.S)
     sub = re.search(r"subissue:\s*([^;]+?)\s*(?:;|$)", text)
+    subissue_val = sub.group(1).strip() if sub else ""
+    if not subissue_val:
+        clean_title = re.sub(r"^\d+[\.\s\-]+", "", title).strip()
+        if clean_title and not clean_title.lower().startswith("step"):
+            subissue_val = f"{clean_title} issue"
+        elif ef and ef.group(1).strip():
+            subissue_val = ef.group(1).strip()
+        elif ":" in text:
+            subissue_val = text.split(":", 1)[0].strip()
+        else:
+            subissue_val = f"step_{num}_anomaly"
     actions = [a.strip(" .") for a in re.findall(r"action:\s*([^;]+?)\s*(?:;|$)", text)]
     esc = re.search(r"escalate:\s*(.+?)\s*(?:;\s*stop\s*$|$)", text, re.S)
     escalate = esc.group(1).strip() if esc else None
@@ -139,7 +171,7 @@ def parse_step(num: int, text: str) -> StepInfo:
         commands=commands,
         expected_pass=ep.group(1).strip() if ep else "",
         expected_fail=ef.group(1).strip() if ef else "",
-        subissue=sub.group(1).strip() if sub else "",
+        subissue=subissue_val,
         actions=actions,
         escalate=escalate if documented else None,
         escalate_documented=documented,
@@ -188,6 +220,43 @@ def profile_record(raw: Any, llm: Callable[[str], str] | None = None) -> RecordP
             conf, fmt = 0.4, "task-plan-only"
             warnings.append("no structured steps found; derived from task_plan (low confidence)")
     if not items:
+        for k in (
+            "sop_steps",
+            "steps",
+            "actions",
+            "plan",
+            "task_plan",
+            "procedure",
+            "resolution_steps",
+            "resolution_step",
+            "diagnostic_command",
+        ):
+            val = rec.get(k)
+            if isinstance(val, list) and val:
+                items = [
+                    {"step": i + 1, "action": x if isinstance(x, str) else json.dumps(x)}
+                    for i, x in enumerate(val)
+                ]
+                conf, fmt = 0.7, f"{k}-list"
+                warnings.append(f"derived steps from {k}")
+                break
+            elif isinstance(val, str) and val.strip():
+                items = [{"step": 1, "action": val.strip()}]
+                conf, fmt = 0.5, f"{k}-field"
+                warnings.append(f"derived step from {k}")
+                break
+    if not instruction:
+        instruction = str(
+            rec.get("instruction")
+            or rec.get("input")
+            or rec.get("prompt")
+            or rec.get("description")
+            or rec.get("details")
+            or rec.get("issue")
+            or rec.get("title")
+            or ""
+        )
+    if not items:
         warnings.append("could not recognize step structure; supply more records or enable LLM")
     steps: list[StepInfo] = []
     for i, it in enumerate(items):
@@ -198,6 +267,20 @@ def profile_record(raw: Any, llm: Callable[[str], str] | None = None) -> RecordP
         steps.append(parse_step(num, text))
     ents, attrs = _entities(instruction)
     label = next((v for k, v in attrs.items() if "fail" in k.lower()), "")
+    if not label:
+        for k in (
+            "failure_type",
+            "issue",
+            "alert_name",
+            "error",
+            "severity",
+            "category",
+            "service",
+        ):
+            val = rec.get(k)
+            if isinstance(val, str) and val.strip():
+                label = val.strip()
+                break
     out_obj = rec.get("output") if isinstance(rec.get("output"), dict) else {}
     ver = out_obj.get("verification", []) if isinstance(out_obj, dict) else []
     return RecordProfile(
